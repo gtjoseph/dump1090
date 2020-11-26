@@ -374,3 +374,13 @@ void rtlsdrClose()
     free(RTLSDR.bounce_buffer);
     RTLSDR.bounce_buffer = NULL;
 }
+
+double rtlsdrGetDefaultSampleRate()
+{
+    return 2400000.0f;
+}
+
+input_format_t rtlsdrGetDefaultSampleFormat()
+{
+    return INPUT_UC8;
+}

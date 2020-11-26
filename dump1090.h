@@ -285,6 +285,7 @@ struct _Modes {                             // Internal state
 
     unsigned        trailing_samples;                     // extra trailing samples in magnitude buffers
     double          sample_rate;                          // actual sample rate in use (in hz)
+    input_format_t  sample_format;                        // sample format
 
     uint16_t       *log10lut;        // Magnitude -> log10 lookup table
     atomic_int      exit;            // Exit from the main loop when true (2 = unclean exit)

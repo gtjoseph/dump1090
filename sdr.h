@@ -29,6 +29,8 @@ bool sdrHandleOption(int argc, char **argv, int *jptr);
 bool sdrOpen();
 void sdrRun();
 void sdrClose();
+double sdrGetDefaultSampleRate();
+input_format_t sdrGetDefaultSampleFormat();
 
 // Call periodically from the SDR read thread to update reader thread CPU stats:
 void sdrMonitor();

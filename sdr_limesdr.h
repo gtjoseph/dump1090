@@ -26,5 +26,7 @@ bool limesdrOpen();
 void limesdrRun();
 void limesdrClose();
 bool limesdrHandleOption(int argc, char **argv, int *jptr);
+double limesdrGetDefaultSampleRate();
+input_format_t limesdrGetDefaultSampleFormat();
 
 #endif

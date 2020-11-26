@@ -28,5 +28,7 @@ bool bladeRFHandleOption(int argc, char **argv, int *jptr);
 bool bladeRFOpen();
 void bladeRFRun();
 void bladeRFClose();
+double bladeRFGetDefaultSampleRate();
+input_format_t bladeRFGetDefaultSampleFormat();
 
 #endif

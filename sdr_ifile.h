@@ -29,5 +29,7 @@ bool ifileHandleOption(int argc, char **argv, int *jptr);
 bool ifileOpen();
 void ifileRun();
 void ifileClose();
+double ifileGetDefaultSampleRate();
+input_format_t ifileGetDefaultSampleFormat();
 
 #endif

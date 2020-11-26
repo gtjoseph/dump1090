@@ -436,3 +436,13 @@ void limesdrClose()
         LimeSDR.dev = NULL;
     }
 }
+
+double limesdrGetDefaultSampleRate()
+{
+    return 2400000.0f;
+}
+
+input_format_t limesdrGetDefaultSampleFormat()
+{
+    return INPUT_SC16;
+}

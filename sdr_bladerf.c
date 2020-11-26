@@ -484,3 +484,13 @@ void bladeRFClose()
         BladeRF.device = NULL;
     }
 }
+
+double bladeRFGetDefaultSampleRate()
+{
+    return 2400000.0f;
+}
+
+input_format_t bladeRFGetDefaultSampleFormat()
+{
+    return INPUT_SC16Q11;
+}
