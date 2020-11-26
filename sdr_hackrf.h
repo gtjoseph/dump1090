@@ -26,5 +26,7 @@ bool hackRFHandleOption(int argc, char **argv, int *jptr);
 bool hackRFOpen();
 void hackRFRun();
 void hackRFClose();
+double hackRFGetDefaultSampleRate();
+input_format_t hackRFGetDefaultSampleFormat();
 
 #endif

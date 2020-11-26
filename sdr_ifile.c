@@ -262,3 +262,13 @@ void ifileClose()
         ifile.fd = -1;
     }
 }
+
+double ifileGetDefaultSampleRate()
+{
+    return 2400000.0f;
+}
+
+input_format_t ifileGetDefaultSampleFormat()
+{
+    return INPUT_UC8;
+}

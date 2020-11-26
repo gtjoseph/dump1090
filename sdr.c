@@ -43,6 +43,8 @@ typedef struct {
     bool (*open)();
     void (*run)();
     void (*close)();
+    double (*getDefaultSampleRate)();
+    input_format_t (*getDefaultSampleFormat)();
 } sdr_handler;
 
 static void noInitConfig()
@@ -76,6 +78,16 @@ static void noClose()
 {
 }
 
+static double noSampleRate()
+{
+    return 2400000.0f;
+}
+
+static input_format_t noSampleFormat()
+{
+    return INPUT_UC8;
+}
+
 static bool unsupportedOpen()
 {
     fprintf(stderr, "Support for this SDR type was not enabled in this build.\n");
@@ -84,24 +96,24 @@ static bool unsupportedOpen()
 
 static sdr_handler sdr_handlers[] = {
 #ifdef ENABLE_RTLSDR
-    { "rtlsdr", SDR_RTLSDR, rtlsdrInitConfig, rtlsdrShowHelp, rtlsdrHandleOption, rtlsdrOpen, rtlsdrRun, rtlsdrClose },
+    { "rtlsdr", SDR_RTLSDR, rtlsdrInitConfig, rtlsdrShowHelp, rtlsdrHandleOption, rtlsdrOpen, rtlsdrRun, rtlsdrClose, rtlsdrGetDefaultSampleRate, rtlsdrGetDefaultSampleFormat },
 #endif
 
 #ifdef ENABLE_BLADERF
-    { "bladerf", SDR_BLADERF, bladeRFInitConfig, bladeRFShowHelp, bladeRFHandleOption, bladeRFOpen, bladeRFRun, bladeRFClose },
+    { "bladerf", SDR_BLADERF, bladeRFInitConfig, bladeRFShowHelp, bladeRFHandleOption, bladeRFOpen, bladeRFRun, bladeRFClose, bladeRFGetDefaultSampleRate, bladeRFGetDefaultSampleFormat },
 #endif
 
 #ifdef ENABLE_HACKRF
-    { "hackrf", SDR_HACKRF, hackRFInitConfig, hackRFShowHelp, hackRFHandleOption, hackRFOpen, hackRFRun, hackRFClose },
+    { "hackrf", SDR_HACKRF, hackRFInitConfig, hackRFShowHelp, hackRFHandleOption, hackRFOpen, hackRFRun, hackRFClose, hackRFGetDefaultSampleRate, hackRFGetDefaultSampleFormat },
 #endif
 #ifdef ENABLE_LIMESDR
-    { "limesdr", SDR_LIMESDR, limesdrInitConfig, limesdrShowHelp, limesdrHandleOption, limesdrOpen, limesdrRun, limesdrClose },
+    { "limesdr", SDR_LIMESDR, limesdrInitConfig, limesdrShowHelp, limesdrHandleOption, limesdrOpen, limesdrRun, limesdrClose, limesdrGetDefaultSampleRate, limesdrGetDefaultSampleFormat },
 #endif
 
-    { "none", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, noOpen, noRun, noClose },
-    { "ifile", SDR_IFILE, ifileInitConfig, ifileShowHelp, ifileHandleOption, ifileOpen, ifileRun, ifileClose },
+    { "none", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, noOpen, noRun, noClose, noSampleRate, noSampleFormat },
+    { "ifile", SDR_IFILE, ifileInitConfig, ifileShowHelp, ifileHandleOption, ifileOpen, ifileRun, ifileClose, ifileGetDefaultSampleRate, ifileGetDefaultSampleFormat },
 
-    { NULL, SDR_NONE, NULL, NULL, NULL, NULL, NULL, NULL } /* must come last */
+    { NULL, SDR_NONE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL } /* must come last */
 };
 
 void sdrInitConfig()
@@ -158,7 +170,7 @@ bool sdrHandleOption(int argc, char **argv, int *jptr)
 
 static sdr_handler *current_handler()
 {
-    static sdr_handler unsupported_handler = { "unsupported", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, unsupportedOpen, noRun, noClose };
+    static sdr_handler unsupported_handler = { "unsupported", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, unsupportedOpen, noRun, noClose, noSampleRate, noSampleFormat };
 
     for (int i = 0; sdr_handlers[i].name; ++i) {
         if (Modes.sdr_type == sdr_handlers[i].sdr_type) {
@@ -196,6 +208,15 @@ void sdrClose()
 {
     pthread_mutex_destroy(&Modes.reader_cpu_mutex);
     current_handler()->close();
+}
+
+double sdrGetDefaultSampleRate()
+{
+    return current_handler()->getDefaultSampleRate();
+}
+
+input_format_t sdrGetDefaultSampleFormat() {
+    return current_handler()->getDefaultSampleFormat();
 }
 
 void sdrMonitor()

@@ -112,6 +112,8 @@ static void modesInitConfig(void) {
     // Now initialise things that should not be 0/NULL to their defaults
     Modes.gain                    = MODES_MAX_GAIN;
     Modes.freq                    = MODES_DEFAULT_FREQ;
+    Modes.sample_rate             = 0.0f;
+    Modes.sample_format           = INPUT_NONE;
     Modes.check_crc               = 1;
     Modes.net_heartbeat_interval  = MODES_NET_HEARTBEAT_INTERVAL;
     Modes.interactive_display_ttl = MODES_INTERACTIVE_DISPLAY_TTL;
@@ -128,7 +130,13 @@ static void modesInitConfig(void) {
 static void modesInit(void) {
     int i;
 
-    Modes.sample_rate = 2400000.0;
+    if (Modes.sample_rate == 0.0f) {
+        Modes.sample_rate = sdrGetDefaultSampleRate();
+    }
+
+    if (Modes.sample_format == INPUT_NONE) {
+        Modes.sample_format = sdrGetDefaultSampleFormat();
+    }
 
     // Allocate the various buffers used by Modes
     Modes.trailing_samples = (MODES_PREAMBLE_US + MODES_LONG_MSG_BITS + 16) * 1e-6 * Modes.sample_rate;
@@ -283,6 +291,14 @@ static void showHelp(void)
 "\n"
 "--gain <db>              Set gain (default: max gain. Use -10 for auto-gain)\n"
 "--freq <hz>              Set frequency (default: 1090 Mhz)\n"
+"--sample-rate <MHz>      Set sample rate (default: 2.4 MHz)\n"
+"--sample-format <format> Set sample format.  One of:\n"
+"                         uc8: unsigned complex 8 bit (default)\n"
+"                         sc16: signed complex 16 bit\n"
+"                         s16: signed real 16 bit\n"
+"                         u16o12: unsigned real 16 bit offset 12 bits\n"
+"                         sc16q11: signed complex 16 bit Q11 format (default for bladerf)\n"
+"                         Not all SDRs can support different formats\n"
 "--interactive            Interactive mode refreshing data on screen. Implies --throttle\n"
 "--interactive-ttl <sec>  Remove from list if idle for <sec> (default: 60)\n"
 "--interactive-show-distance   Show aircraft distance and bearing instead of lat/lon\n"
@@ -523,6 +539,17 @@ int main(int argc, char **argv) {
             Modes.dev_name = strdup(argv[++j]);
         } else if (!strcmp(argv[j],"--gain") && more) {
             Modes.gain = (int) (atof(argv[++j])*10); // Gain is in tens of DBs
+        } else if (!strcmp(argv[j], "--sample-rate") && more) {
+            Modes.sample_rate = atof(argv[++j]);
+            if (Modes.sample_rate < 1e6) {
+                Modes.sample_rate *= 1e6;
+            }
+        } else if (!strcmp(argv[j],"--sample-format") && more) {
+            Modes.sample_format = formatGetByName(argv[++j]);
+            if (Modes.sample_format == INPUT_NONE) {
+                fprintf(stderr, "warning: --sample-format '%s' is unknown.  Will use default for device-type.\n",
+                        argv[j]);
+            }
         } else if (!strcmp(argv[j],"--dcfilter")) {
             Modes.dc_filter = 1;
         } else if (!strcmp(argv[j],"--measure-noise")) {

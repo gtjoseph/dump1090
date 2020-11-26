@@ -81,7 +81,8 @@ bool hackRFHandleOption(int argc, char **argv, int *jptr)
     } else if (!strcmp(argv[j], "--ppm") && more) {
         HackRF.ppm = atoi(argv[++j]);
     } else if (!strcmp(argv[j], "--samplerate") && more) {
-        HackRF.rate = atoi(argv[++j]);
+        Modes.sample_rate = atoi(argv[++j]);
+        fprintf(stderr, "Warning: Option --samplerate has been deprecated in favor of --sample-rate\n");
     } else if (!strcmp(argv[j], "--enable-amp")) {
         HackRF.enable_amp = 1;
     } else {
@@ -100,7 +101,6 @@ void hackRFShowHelp()
     printf("--enable-amp             enable amplifier)\n");
     printf("--lna-gain               set LNA gain (Range 0-40 in 8dB steps))\n");
     printf("--vga-gain               set VGA gain (Range 0-62 in 2dB steps))\n");
-    printf("--samplerate             set sample rate)\n");
     printf("--ppm                    ppm correction)\n");
     printf("\n");
 }
@@ -119,6 +119,8 @@ bool hackRFOpen()
     if (HackRF.device) {
         return true;
     }
+
+    HackRF.rate = Modes.sample_rate;
 
     // Calculate sample rate and frequency deviation if ppm is specified
     if (HackRF.ppm != 0) {
@@ -292,4 +294,14 @@ void hackRFClose()
         hackrf_exit();
         HackRF.device = NULL;
     }
+}
+
+double hackRFGetDefaultSampleRate()
+{
+    return 2400000.0f;
+}
+
+input_format_t hackRFGetDefaultSampleFormat()
+{
+    return INPUT_UC8;
 }
