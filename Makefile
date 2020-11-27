@@ -31,12 +31,17 @@ ifeq ($(PKGCONFIG), yes)
   ifndef LIMESDR
     LIMESDR := $(shell pkg-config --exists LimeSuite && echo "yes" || echo "no")
   endif
+
+  ifndef AIRSPY
+    AIRSPY := $(shell pkg-config --exists libairspy && echo "yes" || echo "no")
+  endif
 else
   # pkg-config not available. Only use explicitly enabled libraries.
   RTLSDR ?= no
   BLADERF ?= no
   HACKRF ?= no
   LIMESDR ?= no
+  AIRSPY ?= no
 endif
 
 UNAME := $(shell uname)
@@ -122,6 +127,14 @@ ifeq ($(LIMESDR), yes)
   LIBS_SDR += $(shell pkg-config --libs LimeSuite)
 endif
 
+ifeq ($(AIRSPY), yes)
+  SDR_OBJ += sdr_airspy.o
+  CPPFLAGS += -DENABLE_AIRSPY
+  DUMP1090_CFLAGS += $(shell pkg-config --cflags libairspy)
+# libairspy is loaded dynamically  
+  LIBS_SDR += -ldl
+endif
+
 all: showconfig dump1090 view1090
 
 showconfig:
@@ -131,6 +144,7 @@ showconfig:
 	@echo "  BladeRF support: $(BLADERF)" >&2
 	@echo "  HackRF support:  $(HACKRF)" >&2
 	@echo "  LimeSDR support: $(LIMESDR)" >&2
+	@echo "  AirSpy support:  $(AIRSPY)" >&2
 
 all: dump1090 view1090
 
