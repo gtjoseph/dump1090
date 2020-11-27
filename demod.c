@@ -20,10 +20,12 @@
 #include "dump1090.h"
 #include "demod.h"
 #include "demod_2400.h"
+#include "demod_hirate.h"
 
 // Thses must be in the same order as demodulator_type_t
 static demodulator_t demods[] = {
-    { "2400", DEMOD_2400, demodulate2400, demodulate2400Init, demodulate2400Free },
+    { "2400", DEMOD_2400, demodulate2400, demodulate2400Init, demodulate2400Free},
+    { "hirate", DEMOD_HIRATE, demodulateHiRate, demodulateHiRateInit, demodulateHiRateFree },
     { NULL, DEMOD_NONE, NULL, NULL, NULL }
 };
 

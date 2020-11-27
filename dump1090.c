@@ -312,6 +312,7 @@ static void showHelp(void)
 "                         Not all SDRs can support different formats\n"
 "--demod <demod>          Set demodulator\n"
 "                         2400: Default for 2.4MHz sample rate\n"
+"                         hirate: Can be used for sample rates >= 6MS/s\n"
 "--interactive            Interactive mode refreshing data on screen. Implies --throttle\n"
 "--interactive-ttl <sec>  Remove from list if idle for <sec> (default: 60)\n"
 "--interactive-show-distance   Show aircraft distance and bearing instead of lat/lon\n"
