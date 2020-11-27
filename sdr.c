@@ -45,6 +45,7 @@ typedef struct {
     void (*close)();
     double (*getDefaultSampleRate)();
     input_format_t (*getDefaultSampleFormat)();
+    demodulator_type_t(*getDefaultDemodulatorType)();
 } sdr_handler;
 
 static void noInitConfig()
@@ -88,6 +89,11 @@ static input_format_t noSampleFormat()
     return INPUT_UC8;
 }
 
+static demodulator_type_t noDemodulatorType()
+{
+    return DEMOD_2400;
+}
+
 static bool unsupportedOpen()
 {
     fprintf(stderr, "Support for this SDR type was not enabled in this build.\n");
@@ -96,24 +102,24 @@ static bool unsupportedOpen()
 
 static sdr_handler sdr_handlers[] = {
 #ifdef ENABLE_RTLSDR
-    { "rtlsdr", SDR_RTLSDR, rtlsdrInitConfig, rtlsdrShowHelp, rtlsdrHandleOption, rtlsdrOpen, rtlsdrRun, rtlsdrClose, rtlsdrGetDefaultSampleRate, rtlsdrGetDefaultSampleFormat },
+    { "rtlsdr", SDR_RTLSDR, rtlsdrInitConfig, rtlsdrShowHelp, rtlsdrHandleOption, rtlsdrOpen, rtlsdrRun, rtlsdrClose, rtlsdrGetDefaultSampleRate, rtlsdrGetDefaultSampleFormat, rtlsdrGetDefaultDemodulatorType },
 #endif
 
 #ifdef ENABLE_BLADERF
-    { "bladerf", SDR_BLADERF, bladeRFInitConfig, bladeRFShowHelp, bladeRFHandleOption, bladeRFOpen, bladeRFRun, bladeRFClose, bladeRFGetDefaultSampleRate, bladeRFGetDefaultSampleFormat },
+    { "bladerf", SDR_BLADERF, bladeRFInitConfig, bladeRFShowHelp, bladeRFHandleOption, bladeRFOpen, bladeRFRun, bladeRFClose, bladeRFGetDefaultSampleRate, bladeRFGetDefaultSampleFormat, bladeRFGetDefaultDemodulatorType },
 #endif
 
 #ifdef ENABLE_HACKRF
-    { "hackrf", SDR_HACKRF, hackRFInitConfig, hackRFShowHelp, hackRFHandleOption, hackRFOpen, hackRFRun, hackRFClose, hackRFGetDefaultSampleRate, hackRFGetDefaultSampleFormat },
+    { "hackrf", SDR_HACKRF, hackRFInitConfig, hackRFShowHelp, hackRFHandleOption, hackRFOpen, hackRFRun, hackRFClose, hackRFGetDefaultSampleRate, hackRFGetDefaultSampleFormat, hackRFGetDefaultDemodulatorType },
 #endif
 #ifdef ENABLE_LIMESDR
-    { "limesdr", SDR_LIMESDR, limesdrInitConfig, limesdrShowHelp, limesdrHandleOption, limesdrOpen, limesdrRun, limesdrClose, limesdrGetDefaultSampleRate, limesdrGetDefaultSampleFormat },
+    { "limesdr", SDR_LIMESDR, limesdrInitConfig, limesdrShowHelp, limesdrHandleOption, limesdrOpen, limesdrRun, limesdrClose, limesdrGetDefaultSampleRate, limesdrGetDefaultSampleFormat, limesdrGetDefaultDemodulatorType },
 #endif
 
-    { "none", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, noOpen, noRun, noClose, noSampleRate, noSampleFormat },
-    { "ifile", SDR_IFILE, ifileInitConfig, ifileShowHelp, ifileHandleOption, ifileOpen, ifileRun, ifileClose, ifileGetDefaultSampleRate, ifileGetDefaultSampleFormat },
+    { "none", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, noOpen, noRun, noClose, noSampleRate, noSampleFormat, noDemodulatorType },
+    { "ifile", SDR_IFILE, ifileInitConfig, ifileShowHelp, ifileHandleOption, ifileOpen, ifileRun, ifileClose, ifileGetDefaultSampleRate, ifileGetDefaultSampleFormat, ifileGetDefaultDemodulatorType },
 
-    { NULL, SDR_NONE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL } /* must come last */
+    { NULL, SDR_NONE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL } /* must come last */
 };
 
 void sdrInitConfig()
@@ -170,7 +176,7 @@ bool sdrHandleOption(int argc, char **argv, int *jptr)
 
 static sdr_handler *current_handler()
 {
-    static sdr_handler unsupported_handler = { "unsupported", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, unsupportedOpen, noRun, noClose, noSampleRate, noSampleFormat };
+    static sdr_handler unsupported_handler = { "unsupported", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, unsupportedOpen, noRun, noClose, noSampleRate, noSampleFormat, noDemodulatorType };
 
     for (int i = 0; sdr_handlers[i].name; ++i) {
         if (Modes.sdr_type == sdr_handlers[i].sdr_type) {
@@ -217,6 +223,10 @@ double sdrGetDefaultSampleRate()
 
 input_format_t sdrGetDefaultSampleFormat() {
     return current_handler()->getDefaultSampleFormat();
+}
+
+demodulator_type_t sdrGetDefaultDemodulatorType() {
+    return current_handler()->getDefaultDemodulatorType();
 }
 
 void sdrMonitor()

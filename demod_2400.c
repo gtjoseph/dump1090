@@ -18,6 +18,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "dump1090.h"
+#include "demod_2400.h"
 
 #include <assert.h>
 
@@ -62,7 +63,7 @@ static inline int slice_phase4(uint16_t *m) {
 // Given 'mlen' magnitude samples in 'm', sampled at 2.4MHz,
 // try to demodulate some Mode S messages.
 //
-void demodulate2400(struct mag_buf *mag)
+static void demodulate2400Task(struct mag_buf *mag)
 {
     static struct modesMessage zeroMessage;
     struct modesMessage mm;
@@ -470,7 +471,7 @@ static void draw_modeac(uint16_t *m, unsigned modeac, unsigned f1_clock, unsigne
 //
 // one 2.4MHz sample = 25 cycles
 
-void demodulate2400AC(struct mag_buf *mag)
+static void demodulate2400ACTask(struct mag_buf *mag)
 {
     struct modesMessage mm;
     uint16_t *m = mag->data;
@@ -657,4 +658,33 @@ void demodulate2400AC(struct mag_buf *mag)
         f1_sample += (20*87 / 25);
         Modes.stats_current.demod_modeac++;
     }
+}
+
+void demodulate2400(struct mag_buf *mag)
+{
+    struct timespec start_time;
+
+    start_cpu_timing(&start_time);
+    demodulate2400Task(mag);
+
+    if (Modes.mode_ac) {
+        demodulate2400ACTask(mag);
+    }
+
+    Modes.stats_current.samples_processed += mag->validLength;
+    Modes.stats_current.samples_dropped += mag->dropped;
+    end_cpu_timing(&start_time, &Modes.stats_current.demod_cpu);
+
+    fifo_release(mag);
+}
+
+void demodulate2400Init(void *context)
+{
+    MODES_NOTUSED(context);
+}
+
+void demodulate2400Free(void *context)
+{
+    MODES_NOTUSED(context);
+    return;
 }

@@ -261,7 +261,7 @@ typedef enum {
 #include "anet.h"
 #include "net_io.h"
 #include "crc.h"
-#include "demod_2400.h"
+#include "demod.h"
 #include "stats.h"
 #include "cpr.h"
 #include "icao_filter.h"
@@ -286,6 +286,7 @@ struct _Modes {                             // Internal state
     unsigned        trailing_samples;                     // extra trailing samples in magnitude buffers
     double          sample_rate;                          // actual sample rate in use (in hz)
     input_format_t  sample_format;                        // sample format
+    demodulator_t  *demod;                                // the demodulator
 
     uint16_t       *log10lut;        // Magnitude -> log10 lookup table
     atomic_int      exit;            // Exit from the main loop when true (2 = unclean exit)

@@ -30,5 +30,6 @@ void bladeRFRun();
 void bladeRFClose();
 double bladeRFGetDefaultSampleRate();
 input_format_t bladeRFGetDefaultSampleFormat();
+demodulator_type_t bladeRFGetDefaultDemodulatorType();
 
 #endif

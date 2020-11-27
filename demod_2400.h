@@ -21,10 +21,10 @@
 #define DUMP1090_DEMOD_2400_H
 
 #include <stdint.h>
-
-struct mag_buf;
+#include "demod.h"
 
 void demodulate2400(struct mag_buf *mag);
-void demodulate2400AC(struct mag_buf *mag);
+void demodulate2400Init(void *context);
+void demodulate2400Free(void *context);
 
 #endif

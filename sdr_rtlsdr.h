@@ -29,5 +29,6 @@ void rtlsdrClose();
 bool rtlsdrHandleOption(int argc, char **argv, int *jptr);
 double rtlsdrGetDefaultSampleRate();
 input_format_t rtlsdrGetDefaultSampleFormat();
+demodulator_type_t rtlsdrGetDefaultDemodulatorType();
 
 #endif

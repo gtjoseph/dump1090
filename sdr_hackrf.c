@@ -305,3 +305,8 @@ input_format_t hackRFGetDefaultSampleFormat()
 {
     return INPUT_UC8;
 }
+
+demodulator_type_t hackRFGetDefaultDemodulatorType()
+{
+    return DEMOD_2400;
+}
