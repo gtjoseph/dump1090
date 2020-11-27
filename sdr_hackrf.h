@@ -28,5 +28,6 @@ void hackRFRun();
 void hackRFClose();
 double hackRFGetDefaultSampleRate();
 input_format_t hackRFGetDefaultSampleFormat();
+demodulator_type_t hackRFGetDefaultDemodulatorType();
 
 #endif

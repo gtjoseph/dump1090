@@ -28,5 +28,6 @@ void limesdrClose();
 bool limesdrHandleOption(int argc, char **argv, int *jptr);
 double limesdrGetDefaultSampleRate();
 input_format_t limesdrGetDefaultSampleFormat();
+demodulator_type_t limesdrGetDefaultDemodulatorType();
 
 #endif

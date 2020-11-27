@@ -384,3 +384,8 @@ input_format_t rtlsdrGetDefaultSampleFormat()
 {
     return INPUT_UC8;
 }
+
+demodulator_type_t rtlsdrGetDefaultDemodulatorType()
+{
+    return DEMOD_2400;
+}

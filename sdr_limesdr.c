@@ -446,3 +446,8 @@ input_format_t limesdrGetDefaultSampleFormat()
 {
     return INPUT_SC16;
 }
+
+demodulator_type_t limesdrGetDefaultDemodulatorType()
+{
+    return DEMOD_2400;
+}

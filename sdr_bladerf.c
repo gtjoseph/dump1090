@@ -494,3 +494,10 @@ input_format_t bladeRFGetDefaultSampleFormat()
 {
     return INPUT_SC16Q11;
 }
+
+demodulator_type_t bladeRFGetDefaultDemodulatorType()
+{
+    return DEMOD_2400;
+}
+
+

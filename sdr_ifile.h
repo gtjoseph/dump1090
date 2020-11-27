@@ -31,5 +31,6 @@ void ifileRun();
 void ifileClose();
 double ifileGetDefaultSampleRate();
 input_format_t ifileGetDefaultSampleFormat();
+demodulator_type_t ifileGetDefaultDemodulatorType();
 
 #endif

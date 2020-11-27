@@ -271,3 +271,8 @@ input_format_t ifileGetDefaultSampleFormat()
 {
     return INPUT_UC8;
 }
+
+demodulator_type_t ifileGetDefaultDemodulatorType()
+{
+    return DEMOD_2400;
+}

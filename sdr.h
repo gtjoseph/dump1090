@@ -31,6 +31,7 @@ void sdrRun();
 void sdrClose();
 double sdrGetDefaultSampleRate();
 input_format_t sdrGetDefaultSampleFormat();
+demodulator_type_t sdrGetDefaultDemodulatorType();
 
 // Call periodically from the SDR read thread to update reader thread CPU stats:
 void sdrMonitor();

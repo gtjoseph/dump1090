@@ -138,6 +138,17 @@ static void modesInit(void) {
         Modes.sample_format = sdrGetDefaultSampleFormat();
     }
 
+    if (Modes.demod == NULL) {
+        Modes.demod = demodGetByType(sdrGetDefaultDemodulatorType());
+    }
+
+    if (Modes.demod == NULL) {
+        fprintf(stderr, "Demodulator must be '2400' or 'hirate'\n");
+        exit(1);
+    }
+
+    Modes.demod->demod_init_fn(NULL);
+
     // Allocate the various buffers used by Modes
     Modes.trailing_samples = (MODES_PREAMBLE_US + MODES_LONG_MSG_BITS + 16) * 1e-6 * Modes.sample_rate;
 
@@ -299,6 +310,8 @@ static void showHelp(void)
 "                         u16o12: unsigned real 16 bit offset 12 bits\n"
 "                         sc16q11: signed complex 16 bit Q11 format (default for bladerf)\n"
 "                         Not all SDRs can support different formats\n"
+"--demod <demod>          Set demodulator\n"
+"                         2400: Default for 2.4MHz sample rate\n"
 "--interactive            Interactive mode refreshing data on screen. Implies --throttle\n"
 "--interactive-ttl <sec>  Remove from list if idle for <sec> (default: 60)\n"
 "--interactive-show-distance   Show aircraft distance and bearing instead of lat/lon\n"
@@ -550,6 +563,11 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "warning: --sample-format '%s' is unknown.  Will use default for device-type.\n",
                         argv[j]);
             }
+        } else if (!strcmp(argv[j], "--demod") && more) {
+            Modes.demod = demodGetByName(argv[++j]);
+            if (!Modes.demod) {
+                fprintf(stderr, "warning: --demodulator '%s' is unknown.  Will use default for device type.\n", argv[++j]);
+            }
         } else if (!strcmp(argv[j],"--dcfilter")) {
             Modes.dc_filter = 1;
         } else if (!strcmp(argv[j],"--measure-noise")) {
@@ -772,18 +790,7 @@ int main(int argc, char **argv) {
             if (buf) {
                 // Process one buffer
 
-                start_cpu_timing(&start_time);
-                demodulate2400(buf);
-                if (Modes.mode_ac) {
-                    demodulate2400AC(buf);
-                }
-
-                Modes.stats_current.samples_processed += buf->validLength;
-                Modes.stats_current.samples_dropped += buf->dropped;
-                end_cpu_timing(&start_time, &Modes.stats_current.demod_cpu);
-
-                // Return the buffer to the FIFO freelist for reuse
-                fifo_release(buf);
+                Modes.demod->demod_fn(buf);
 
                 // We got something so reset the watchdog
                 watchdogCounter = 10;
@@ -803,6 +810,9 @@ int main(int argc, char **argv) {
         log_with_timestamp("Waiting for receive thread termination");
         fifo_halt(); // Reader thread should do this anyway, but just in case..
         pthread_join(Modes.reader_thread,NULL);     // Wait on reader thread exit
+        if (Modes.demod->demod_free_fn) {
+            Modes.demod->demod_free_fn(NULL);
+        }
     }
 
     interactiveCleanup();
