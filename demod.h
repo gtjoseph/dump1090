@@ -22,7 +22,7 @@
 
 struct mag_buf;
 
-typedef enum { DEMOD_2400 = 0, DEMOD_NONE } demodulator_type_t;
+typedef enum { DEMOD_2400 = 0, DEMOD_HIRATE, DEMOD_NONE } demodulator_type_t;
 typedef void (* demod_fn_t)(struct mag_buf *mag);
 typedef void (* demod_init_fn_t)(void *);
 typedef void (* demod_free_fn_t)(void *);
