@@ -53,6 +53,14 @@ see https://flightaware.com/adsb/piaware/install
 
 This is packaged with jessie. `sudo apt-get install librtlsdr-dev`
 
+### Dependencies - airspy
+
+Supoprt for AirSpy devices is packaged with most modern distributions. 
+For Debian based distros: `sudo apt-get install libairspy0-dev`
+For RedHat based distros: `sudo yum (or dnf) install airspyone_host-devel`
+
+See [Native AirSpy Support](README-airspy.md) for more information.
+
 ### Actually building it
 
 Nothing special, just build it (`dpkg-buildpackage -b`)
@@ -90,6 +98,19 @@ libhackrf.
 
 ``make LIMESDR=no`` will disable LimeSDR support and remove the dependency on
 libLimeSuite.
+
+``make AIRSPY=no`` will disable AirSpy support and remove the dependency on
+libairspy.
+
+Note:  Building with the clang compiler instead of gcc can
+provide a noticable decrease in CPU utilization.  To use it, install
+the latest clang package available for your distribution (it's
+generally supported) and build with `make CC=clang`.  Debian based
+distros seem to include several clang versions. with the latest NOT
+being the default.  On Raspbian for instance, the latest is clang-9
+but just running `clang` gets you clang-6.  You can just add the
+appropriate version to the make command line like so:
+`make CC=clang-9`.
 
 ## Building on OSX
 

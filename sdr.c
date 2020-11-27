@@ -33,6 +33,9 @@
 #ifdef ENABLE_LIMESDR
 #  include "sdr_limesdr.h"
 #endif
+#ifdef ENABLE_AIRSPY
+#  include "sdr_airspy.h"
+#endif
 
 typedef struct {
     const char *name;
@@ -115,6 +118,9 @@ static sdr_handler sdr_handlers[] = {
 #ifdef ENABLE_LIMESDR
     { "limesdr", SDR_LIMESDR, limesdrInitConfig, limesdrShowHelp, limesdrHandleOption, limesdrOpen, limesdrRun, limesdrClose, limesdrGetDefaultSampleRate, limesdrGetDefaultSampleFormat, limesdrGetDefaultDemodulatorType },
 #endif
+#ifdef ENABLE_AIRSPY
+    { "airspy", SDR_AIRSPY, airspyInitConfig, airspyShowHelp, airspyHandleOption, airspyOpen, airspyRun, airspyClose, airspyGetDefaultSampleRate, airspyGetDefaultSampleFormat, airspyGetDefaultDemodulatorType },
+#endif
 
     { "none", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, noOpen, noRun, noClose, noSampleRate, noSampleFormat, noDemodulatorType },
     { "ifile", SDR_IFILE, ifileInitConfig, ifileShowHelp, ifileHandleOption, ifileOpen, ifileRun, ifileClose, ifileGetDefaultSampleRate, ifileGetDefaultSampleFormat, ifileGetDefaultDemodulatorType },
@@ -167,8 +173,18 @@ bool sdrHandleOption(int argc, char **argv, int *jptr)
     }
 
     for (int i = 0; sdr_handlers[i].name; ++i) {
-        if (sdr_handlers[i].handleOption(argc, argv, jptr))
+        // If device type has already been specified on the command line, only
+        // call that types option handler.  This prevents one type from eating
+        // options meant for another.
+        if (Modes.sdr_type != SDR_NONE) {
+            if (Modes.sdr_type == sdr_handlers[i].sdr_type) {
+                if (sdr_handlers[i].handleOption(argc, argv, jptr)) {
+                    return true;
+                }
+            }
+        } else if (sdr_handlers[i].handleOption(argc, argv, jptr)) {
             return true;
+        }
     }
 
     return false;
