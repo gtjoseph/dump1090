@@ -29,7 +29,6 @@
 static struct {
     struct airspy_device *device;
     uint64_t serial;
-    uint64_t freq;
     int lna_gain;
     int mixer_gain;
     int vga_gain;
@@ -118,7 +117,6 @@ void airspyInitConfig()
 
     AirSpy.device = NULL;
     AirSpy.serial = 0;
-    AirSpy.freq = 1090000000;
     AirSpy.lna_gain = -1;
     AirSpy.mixer_gain = -1;
     AirSpy.vga_gain = -1;
@@ -231,7 +229,7 @@ void airspyShowHelp()
 static void show_config()
 {
     fprintf(stderr, "serial           : 0x%" PRIx64 "\n", AirSpy.serial);
-    fprintf(stderr, "freq             : %" PRIu64 "\n", AirSpy.freq);
+    fprintf(stderr, "freq             : %d\n", Modes.freq);
     fprintf(stderr, "sample-rate      : %.0f\n", Modes.sample_rate);
     fprintf(stderr, "sample-format    : %s\n", formatGetName(Modes.sample_format));
     fprintf(stderr, "demodulator      : %s\n", Modes.demod->name);
@@ -322,6 +320,11 @@ bool airspyOpen()
         return false;
     }
 
+    if (!(AirSpy.individual_gains_set || AirSpy.preset_gains_set)) {
+        fprintf(stderr, "AirSpy: linearity-gain set to default of 21\n");
+        AirSpy.linearity_gain = 21;
+    }
+
     if (AirSpy.serial) {
         status = D_airspy_open_sn(&AirSpy.device, AirSpy.serial);
     } else {
@@ -372,9 +375,9 @@ bool airspyOpen()
         exit (1);
     }
 
-    status = D_airspy_set_freq(AirSpy.device, AirSpy.freq);
+    status = D_airspy_set_freq(AirSpy.device, (uint32_t)Modes.freq);
     if (status != 0) {
-        fprintf(stderr, "AirSpy: Set frequency (%" PRIu64 ") faileded\n", AirSpy.freq);
+        fprintf(stderr, "AirSpy: Set frequency (%d) failed\n", Modes.freq);
         airspyClose();
         exit (1);
     }
@@ -480,41 +483,6 @@ void airspyRun()
         airspyClose();
         exit (1); 
     }
-
-    /*
-    char pb[17] = {0, };
-    uint8_t reg_value;
-    airspy_r820t_read(AirSpy.device, 9, &reg_value);
-    new_value = 0b00000000;
-    airspy_r820t_write(AirSpy.device, 9, reg_value);
-    fprintf(stderr, " 9: %s %s\n", print8(reg_value, pb), print8(new_value, &pb[9]));
-
-    airspy_r820t_read(AirSpy.device, 10, &reg_value);
-    new_value = 0b11110000;
-    airspy_r820t_write(AirSpy.device, 10, new_value);
-    fprintf(stderr, "10: %s %s\n", print8(reg_value, pb), print8(new_value, &pb[9]));
-
-    airspy_r820t_read(AirSpy.device, 11, &reg_value);
-    new_value = 0b01001111;
-    airspy_r820t_write(AirSpy.device, 11, new_value);
-    fprintf(stderr, "11: %s %s\n", print8(reg_value, pb), print8(new_value, &pb[9]));
-
-    airspy_r820t_read(AirSpy.device, 25, &reg_value);
-    new_value = 0b11001100;
-    airspy_r820t_write(AirSpy.device, 25, new_value);
-    fprintf(stderr, "25: %s %s\n", print8(reg_value, pb), print8(new_value, &pb[9]));
-*/
-    uint8_t new_value;
-    uint8_t reg_value;
-    D_airspy_r820t_read(AirSpy.device, 26, &reg_value);
-    new_value = 0b01100000;
-    D_airspy_r820t_write(AirSpy.device, 26, new_value);
-/*
-    airspy_r820t_read(AirSpy.device, 27, &reg_value);
-    new_value = 0b00000000;
-    airspy_r820t_write(AirSpy.device, 27, new_value);
-    fprintf(stderr, "27: %s %s\n", print8(reg_value, pb), print8(new_value, &pb[9]));
-*/
 
     // airspy_start_rx does not block so we need to wait until the streaming is finished
     // before returning from the hackRFRun function

@@ -2,7 +2,8 @@
 
 As an alternative to using airspy_adsb, dump1090-fa can now access AirSpy devices
 directly.  To use it, install the AirSpy libraries for your distribution.
-For Debian based distributions, the package is "libairspy0".
+For Debian based distributions, the package is "libairspy0".  For RedHat
+based distributions, it's "airspyone_host".
 
 ## Options
 
@@ -70,7 +71,7 @@ in complete garbage.
     
 To build with AirSpy support, install the appropriate development
 package for your distribution.  For Debian based distros, it's
-named libairspy0-dev.  For RedHat based distros, it's
+named libairspy-dev.  For RedHat based distros, it's
 airspyone_host-devel.  Simply run 'make' and the support should
 be included.  Some distributions also have a libairspyhf package
 but that's not for this device or purpose. 
