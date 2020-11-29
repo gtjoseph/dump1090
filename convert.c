@@ -307,7 +307,7 @@ static void convert_int16(void *int_data,
 {
     MODES_NOTUSED(state);
     int16_t *in = int_data;
-    size_t i;
+    uint32_t i;
     float sum_level = 0;
     float sum_power = 0;
 
@@ -349,7 +349,7 @@ static void convert_uint16_offset12(void *int_data,
 {
     MODES_NOTUSED(state);
     uint16_t *in = int_data;
-    size_t i;
+    uint32_t i;
     float sum_level = 0;
     float sum_power = 0;
 
