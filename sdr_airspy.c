@@ -23,8 +23,6 @@
 #include <libairspy/airspy.h>
 #include <libairspy/filters.h>
 #include <inttypes.h>
-#include <sys/prctl.h>
-#include <dlfcn.h>
 
 static struct {
     struct airspy_device *device;
@@ -46,75 +44,8 @@ static struct {
     struct converter_state *converter_state;
 } AirSpy;
 
-int (*D_airspy_open_sn)(struct airspy_device** device, uint64_t serial_number);
-int (*D_airspy_open)(struct airspy_device** device);
-int (*D_airspy_close)(struct airspy_device* device);
-int (*D_airspy_start_rx)(struct airspy_device* device, airspy_sample_block_cb_fn callback, void* rx_ctx);
-int (*D_airspy_stop_rx)(struct airspy_device* device);
-int (*D_airspy_is_streaming)(struct airspy_device* device);
-int (*D_airspy_set_samplerate)(struct airspy_device* device, uint32_t samplerate);
-int (*D_airspy_set_sample_type)(struct airspy_device* device, enum airspy_sample_type sample_type);
-int (*D_airspy_set_freq)(struct airspy_device* device, const uint32_t freq_hz);
-int (*D_airspy_set_lna_gain)(struct airspy_device* device, uint8_t value);
-int (*D_airspy_set_mixer_gain)(struct airspy_device* device, uint8_t value);
-int (*D_airspy_set_vga_gain)(struct airspy_device* device, uint8_t value);
-int (*D_airspy_set_lna_agc)(struct airspy_device* device, uint8_t value);
-int (*D_airspy_set_mixer_agc)(struct airspy_device* device, uint8_t value);
-int (*D_airspy_set_linearity_gain)(struct airspy_device* device, uint8_t value);
-int (*D_airspy_set_sensitivity_gain)(struct airspy_device* device, uint8_t value);
-int (*D_airspy_set_rf_bias)(struct airspy_device* device, uint8_t value);
-int (*D_airspy_set_packing)(struct airspy_device* device, uint8_t value);
-int (*D_airspy_r820t_read)(struct airspy_device* device, uint8_t reg, uint8_t *value);
-int (*D_airspy_r820t_write)(struct airspy_device* device, uint8_t reg, uint8_t value);
-
-static void *dll_handle = NULL;
-
-static void *find_libairspy() {
-    void * handle = dlopen("libairspy.so", RTLD_NOW);
-    if (handle) {
-        return handle;
-    }
-    handle = dlopen("libairspy.so.0", RTLD_NOW);
-    if (handle) {
-        return handle;
-    }
-    handle = dlopen("libairspy.so.1.0.9", RTLD_NOW);
-    if (handle) {
-        return handle;
-    }
-    return NULL;
-}
-
-
 void airspyInitConfig()
 {
-
-    dll_handle = find_libairspy();
-    if (!dll_handle) {
-        return;
-    }
-
-    D_airspy_open_sn = dlsym(dll_handle, "airspy_open_sn");
-    D_airspy_open = dlsym(dll_handle, "airspy_open");
-    D_airspy_close = dlsym(dll_handle, "airspy_close");
-    D_airspy_start_rx = dlsym(dll_handle, "airspy_start_rx");
-    D_airspy_stop_rx = dlsym(dll_handle, "airspy_stop_rx");
-    D_airspy_is_streaming = dlsym(dll_handle, "airspy_is_streaming");
-    D_airspy_set_samplerate = dlsym(dll_handle, "airspy_set_samplerate");
-    D_airspy_set_sample_type = dlsym(dll_handle, "airspy_set_sample_type");
-    D_airspy_set_freq = dlsym(dll_handle, "airspy_set_freq");
-    D_airspy_set_lna_gain = dlsym(dll_handle, "airspy_set_lna_gain");
-    D_airspy_set_mixer_gain = dlsym(dll_handle, "airspy_set_mixer_gain");
-    D_airspy_set_vga_gain = dlsym(dll_handle, "airspy_set_vga_gain");
-    D_airspy_set_lna_agc = dlsym(dll_handle, "airspy_set_lna_agc");
-    D_airspy_set_mixer_agc = dlsym(dll_handle, "airspy_set_mixer_agc");
-    D_airspy_set_linearity_gain = dlsym(dll_handle, "airspy_set_linearity_gain");
-    D_airspy_set_sensitivity_gain = dlsym(dll_handle, "airspy_set_sensitivity_gain");
-    D_airspy_set_rf_bias = dlsym(dll_handle, "airspy_set_rf_bias");
-    D_airspy_set_packing = dlsym(dll_handle, "airspy_set_packing");
-    D_airspy_r820t_read = dlsym(dll_handle, "airspy_r820t_read");
-    D_airspy_r820t_write = dlsym(dll_handle, "airspy_r820t_write");
-
     AirSpy.device = NULL;
     AirSpy.serial = 0;
     AirSpy.lna_gain = -1;
@@ -198,14 +129,7 @@ bool airspyHandleOption(int argc, char **argv, int *jptr)
 void airspyShowHelp()
 {
 
-    void *handle = find_libairspy();
-
     printf("      AirSpy-specific options (use with --device-type airspy)\n");
-    if (!handle) {
-        printf("      WARNING: AirSpy support disabled because libairspy not found\n");
-    } else {
-        dlclose(handle);
-    }
 
     printf("\n");
     printf("--device <serial>         select device by hex serial number\n");
@@ -248,10 +172,10 @@ static void show_config()
 }
 
 #define SET_PARAM_VAL(__name, __val) \
-    status = D_airspy_set_ ## __name(AirSpy.device, __val); \
+    status = airspy_set_ ## __name(AirSpy.device, __val); \
     if (status != 0) { \
         fprintf(stderr, "AirSpy: airspy_set_" #__name " failed with code %d\n", status); \
-        D_airspy_close(AirSpy.device); \
+        airspy_close(AirSpy.device); \
         return false; \
     }
 
@@ -269,11 +193,6 @@ bool airspyOpen()
 
     if (AirSpy.device) {
         return true;
-    }
-
-    if (!dll_handle) {
-        fprintf(stderr, "AirSpy: libairspy not found\n");
-        return false;
     }
 
     if (Modes.dev_name) {
@@ -326,9 +245,9 @@ bool airspyOpen()
     }
 
     if (AirSpy.serial) {
-        status = D_airspy_open_sn(&AirSpy.device, AirSpy.serial);
+        status = airspy_open_sn(&AirSpy.device, AirSpy.serial);
     } else {
-        status = D_airspy_open(&AirSpy.device);
+        status = airspy_open(&AirSpy.device);
     }
 
     if (status != AIRSPY_SUCCESS) {
@@ -367,7 +286,7 @@ bool airspyOpen()
 
     SET_PARAM_VAL(sample_type, airspy_sample_format);
 
-    status = D_airspy_set_samplerate(AirSpy.device, (uint32_t)Modes.sample_rate);
+    status = airspy_set_samplerate(AirSpy.device, (uint32_t)Modes.sample_rate);
     if (status != 0) {
         fprintf(stderr, "AirSpy: Invalid combination of sample rate (%.1f) and sample format (%s)\n",
             Modes.sample_rate, formatGetName(Modes.sample_format));
@@ -375,7 +294,7 @@ bool airspyOpen()
         exit (1);
     }
 
-    status = D_airspy_set_freq(AirSpy.device, (uint32_t)Modes.freq);
+    status = airspy_set_freq(AirSpy.device, (uint32_t)Modes.freq);
     if (status != 0) {
         fprintf(stderr, "AirSpy: Set frequency (%d) failed\n", Modes.freq);
         airspyClose();
@@ -460,13 +379,9 @@ static int handle_airspy_samples(airspy_transfer *transfer)
 void airspyClose()
 {
     if (AirSpy.device) {
-        D_airspy_stop_rx(AirSpy.device);
-        D_airspy_close(AirSpy.device);
+        airspy_stop_rx(AirSpy.device);
+        airspy_close(AirSpy.device);
         AirSpy.device = NULL;
-    }
-    if (dll_handle) {
-        dlclose(dll_handle);
-        dll_handle = NULL;
     }
 }
 
@@ -477,7 +392,7 @@ void airspyRun()
         return;
     }
 
-    int status = D_airspy_start_rx(AirSpy.device, &handle_airspy_samples, NULL);
+    int status = airspy_start_rx(AirSpy.device, &handle_airspy_samples, NULL);
     if (status != 0) { 
         fprintf(stderr, "airspy_start_rx failed\n");
         airspyClose();
@@ -486,7 +401,7 @@ void airspyRun()
 
     // airspy_start_rx does not block so we need to wait until the streaming is finished
     // before returning from the hackRFRun function
-    while (D_airspy_is_streaming(AirSpy.device) == AIRSPY_TRUE && !Modes.exit) {
+    while (airspy_is_streaming(AirSpy.device) == AIRSPY_TRUE && !Modes.exit) {
         struct timespec slp = { 0, 100 * 1000 * 1000};
         nanosleep(&slp, NULL);
     }

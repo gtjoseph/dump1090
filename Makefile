@@ -131,8 +131,7 @@ ifeq ($(AIRSPY), yes)
   SDR_OBJ += sdr_airspy.o
   CPPFLAGS += -DENABLE_AIRSPY
   DUMP1090_CFLAGS += $(shell pkg-config --cflags libairspy)
-# libairspy is loaded dynamically  
-  LIBS_SDR += -ldl
+  LIBS_SDR += $(shell pkg-config --libs libairspy)
 endif
 
 all: showconfig dump1090 view1090
