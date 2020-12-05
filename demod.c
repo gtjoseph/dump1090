@@ -24,19 +24,21 @@
 
 // Thses must be in the same order as demodulator_type_t
 static demodulator_t demods[] = {
-    { "2400", DEMOD_2400, demodulate2400, demodulate2400Init, demodulate2400Free},
-    { "hirate", DEMOD_HIRATE, demodulateHiRate, demodulateHiRateInit, demodulateHiRateFree },
-    { NULL, DEMOD_NONE, NULL, NULL, NULL }
+    { "2400", DEMOD_2400, demodulate2400, demodulate2400Init, demodulate2400Free, NULL, NULL},
+    { "hirate", DEMOD_HIRATE, demodulateHiRate, demodulateHiRateInit, demodulateHiRateFree, demodulateHiRateOptions, demodulateHiRateHelp },
+    { NULL, DEMOD_NONE, NULL, NULL, NULL, NULL, NULL }
 };
 
-demodulator_t *demodGetByType(demodulator_type_t demod_type) {
+demodulator_t *demodGetByType(demodulator_type_t demod_type)
+{
     if (demod_type > DEMOD_NONE) {
         return NULL;
     }
     return &demods[demod_type];
 }
 
-demodulator_t *demodGetByName(const char *name) {
+demodulator_t *demodGetByName(const char *name)
+{
     int i;
 
     for (i = 0; demods[i].name; i++) {
@@ -48,9 +50,56 @@ demodulator_t *demodGetByName(const char *name) {
     return NULL;
 }
 
-const char *demodGetName(demodulator_type_t demod_type) {
+const char *demodGetName(demodulator_type_t demod_type)
+{
     if (demod_type > DEMOD_NONE) {
         return NULL;
     }
     return demods[demod_type].name;
 }
+
+bool demodHandleOption(int argc, char **argv, int *jptr)
+{
+    int i;
+
+    int j = *jptr;
+    if (!strcmp(argv[j], "--demod")) {
+        Modes.demod = demodGetByName(argv[++j]);
+        if (!Modes.demod) {
+            fprintf(stderr, "warning: --demod '%s' is unknown.  Will use default for device type.\n", argv[++j]);
+        }
+
+        fprintf(stderr, "Supported demodulators:\n");
+        for (int i = 0; demods[i].name; ++i) {
+            fprintf(stderr, "  %s\n", demods[i].name);
+        }
+
+        return false;
+    }
+
+    for (i = 0; demods[i].name; i++) {
+        if (demods[i].demod_handle_option_fn) {
+            return demods[i].demod_handle_option_fn(argc, argv, jptr);
+        }
+    }
+
+    return false;
+}
+
+void demodShowHelp(void)
+{
+    int i;
+
+    printf("      Demodulator specfic options\n\n");
+    printf("--demod <demod>          Set demodulator\n"
+    "                         2400: Default for 2.4MHz sample rate\n"
+    "                         hirate: Can be used for sample rates >= 6MS/s\n"
+    "\n");
+
+    for (i = 0; demods[i].name; i++) {
+        if (demods[i].demod_show_help_fn) {
+            demods[i].demod_show_help_fn();
+        }
+    }
+}
+

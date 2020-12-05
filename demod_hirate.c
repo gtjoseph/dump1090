@@ -4,6 +4,8 @@
 //
 // Copyright (c) 2020 George Joseph <g.devel@wxy78.net>
 //
+// Function running_sum suggested by Oliver Jowitt
+//
 // This file is free software: you may copy, redistribute and/or modify it
 // under the terms of the GNU General Public License as published by the
 // Free Software Foundation, either version 2 of the License, or (at your
@@ -19,59 +21,163 @@
 
 #include "dump1090.h"
 #include "demod_hirate.h"
+#include <inttypes.h>
+#include <stdlib.h>
 
 #define SYMBOLS_PER_BIT 2
 #define BITS_PER_PREAMBLE 8
-#define SYMBOLS_PER_PREAMBLE (BITS_PER_PREAMBLE << 1)
+#define SYMBOLS_PER_PREAMBLE (BITS_PER_PREAMBLE * 2)
 #define ADSB_DATA_RATE 1000000
 #define ADSB_SYMBOL_RATE (ADSB_DATA_RATE * SYMBOLS_PER_BIT)
-#define ERROR_DF (0xff)
-#define ERROR_EOB (0xfe)
-static uint32_t samples_per_symbol = 0;
-static uint32_t samples_per_bit = 0;
-static uint32_t samples_per_byte = 0;
-static uint32_t samples_per_preamble = 0;
 
-struct demod_context {
-    uint32_t threshold;
+static uint32_t samples_per_symbol;
+static uint32_t samples_per_bit;
+static uint32_t samples_per_byte;
+static uint32_t samples_per_preamble;
+static uint32_t max_samples_per_frame;
+
+#define MSG_MAX_DECODE_TRIES 16
+
+#define PERFECT_PREAMBLE_SCORE    20
+#define DEFAULT_HIRATE_THRESHOLD 0.4
+#define DEFAULT_HIRATE_SCORE      19
+#define DEFAULT_HIRATE_WINDOW      3
+#define DEFAULT_HIRATE_TRIES      11
+
+#define ALLOW_HIRATE_THRESHOLD
+#define ALLOW_HIRATE_SCORE
+#define ALLOW_HIRATE_WINDOW
+#define ALLOW_HIRATE_TRIES
+
+#if (defined(ALLOW_HIRATE_THRESHOLD) || defined(ALLOW_HIRATE_SCORE) || defined(ALLOW_HIRATE_WINDOW) || defined(ALLOW_HIRATE_TRIES))
+#define ALLOW_OPTIONS
+#endif
+
+#ifdef ALLOW_HIRATE_THRESHOLD
+static float threshold_factor = DEFAULT_HIRATE_THRESHOLD;
+#else
+#define threshold_factor DEFAULT_HIRATE_THRESHOLD
+#endif
+
+#ifdef ALLOW_HIRATE_SCORE
+static int32_t preamble_score = DEFAULT_HIRATE_SCORE;
+#else
+#define preamble_score DEFAULT_HIRATE_SCORE
+#endif
+
+#ifdef ALLOW_HIRATE_WINDOW
+static uint32_t running_sum_window = DEFAULT_HIRATE_WINDOW;
+#else
+#define running_sum_window DEFAULT_HIRATE_WINDOW
+#endif
+
+#ifdef ALLOW_HIRATE_TRIES
+static uint32_t msg_decode_tries = DEFAULT_HIRATE_TRIES;
+#else
+#define msg_decode_tries DEFAULT_HIRATE_TRIES
+#endif
+
+
+static uint64_t decode_distro[MSG_MAX_DECODE_TRIES] = {0, };
+
+struct message_context {
+    uint8_t buffer[MSG_MAX_DECODE_TRIES][MODES_LONG_MSG_BYTES];
+    uint32_t current_message_index;
+    uint8_t *best_message;
+    uint32_t best_message_index;
+    uint32_t best_message_start;
+    uint32_t msg_bytelen[MSG_MAX_DECODE_TRIES];
+    uint8_t df[MSG_MAX_DECODE_TRIES];
+    int32_t score[MSG_MAX_DECODE_TRIES];
+    uint16_t *pristine_buffer;
+    uint16_t threshold;
+    uint32_t messages_scored;
+    uint64_t sum_mark_signal_level[MSG_MAX_DECODE_TRIES];
 };
 
-static void reportScore(int score);
-static void reportMessage(struct modesMessage *mm, double signal_power, int signal_len);
+/*
+ * Both gcc and clang do a good job on their own of inlining
+ * the following short functions.  No need to make them macros
+ * or provide hints to the compiler.  In fact, the more hints
+ * you give to the compiler, the worse performance seems to get.
+ */
 
-static uint16_t avgSamples(const uint16_t *buf, const uint32_t next, const uint32_t count)
-{
-    uint32_t sum = 0;
-    uint32_t i;
-    for(i = 0; i < count; i++) {
-        sum += buf[next + i];
-    }
-    return sum / count;
-}
-
-static uint16_t readBit(const uint16_t *buf, uint32_t *next)
+/*!
+ * @brief Reaad 1 bit from the buffer
+ *
+ * @param buf input buffer
+ * @param next position in buffer to read
+ * @param msg message context
+ * @return bit value
+ *
+ * This function assumes that running_sum() has already been run on the buffer
+ * and therefore compares only the first samples from 2 successive symbols.
+ */
+static bool readBit(const uint32_t *buf, const uint32_t next, struct message_context *msg)
 {
     uint16_t ba = 0, bb = 0;
-    ba = avgSamples(buf, *next, samples_per_symbol);
-    *next += samples_per_symbol;
-    bb = avgSamples(buf, *next, samples_per_symbol);
-    *next += samples_per_symbol;
-    return ba > bb;
+    ba = buf[next];
+    bb = buf[next + samples_per_symbol];
+
+    /*
+     * We need to accumulate the signal levels from the pristine buffer
+     * for the "mark" symbols to properly calculate the mean signal
+     * level for the message.  If we tried to use the levels from
+     * the buffer that was modified by running_sum(), we'd get bad
+     * levels.
+     */
+    if (ba > bb) {
+        msg->sum_mark_signal_level[msg->current_message_index]
+            += msg->pristine_buffer[next + msg->current_message_index];
+        return 1;
+    } else {
+        msg->sum_mark_signal_level[msg->current_message_index]
+            += msg->pristine_buffer[next + msg->current_message_index + samples_per_symbol];
+        return 0;
+    }
 }
 
-static uint8_t readByte(const uint16_t *buf, uint32_t *next)
+/*!
+ * @brief Reaad 1 byte from the buffer
+ *
+ * @param buf input buffer
+ * @param next position in buffer to read
+ * @param msg message context
+ * @return byte read
+ *
+ */
+static uint8_t readByte(const uint32_t *buf, const uint32_t next, struct message_context *msg)
 {
     int8_t bit;
     int32_t i;
     uint8_t byte = 0;
+    uint32_t n = next;
+
     for (i=7 ; i >= 0 ; i--) {
-        bit = readBit(buf, next);
-        if (bit >= 0) {
-            byte |= (bit << i);
-            continue;
-        }
+        bit = readBit(buf, n, msg);
+        n += samples_per_bit;
+        byte |= (bit << i);
     }
     return byte;
+}
+
+/*!
+ * @brief Read an arbitrary number of bytes from the buffer
+ *
+ * @param buf input buffer
+ * @param next position in buffer to read
+ * @param outbuf pointer to the output buffer
+ * @param count number of bytes to read
+ * @param msg message context
+ */
+static void readBytes(const uint32_t *buf, const uint32_t next, uint8_t *outbuf,
+    const uint32_t count, struct message_context *msg)
+{
+    uint32_t i;
+
+    for (i = 0; i < count; i++) {
+        outbuf[i] = readByte(buf, next + (samples_per_byte * i), msg);
+    }
 }
 
 /*
@@ -83,31 +189,36 @@ static uint8_t readByte(const uint16_t *buf, uint32_t *next)
  * ^_^____^_^______
  */
 
-static uint32_t check_preamble(const uint16_t *buf, const uint32_t next_sample)
+/*!
+ * @brief Check if the buffer provided starts with a oreamble
+ * @param buf input buffer
+ * @return score (20 is perfect match)
+ */
+static int32_t check_preamble(const uint32_t *buf)
 {
     uint32_t i;
-    uint32_t score = 0;
+    int32_t score = 0;
     uint16_t symbols[SYMBOLS_PER_PREAMBLE];
 
     for (i = 0; i < SYMBOLS_PER_PREAMBLE; i++) {
-        symbols[i] = avgSamples(buf, next_sample + samples_per_symbol * i, samples_per_symbol);
+        symbols[i] = buf[samples_per_symbol * i];
     }
 
     /*
-     * Max score is 22.
+     * Max score is 20.
      * The transition symbols (mark -> space or space -> mark) carry more weight than
      * the all-space symbols.
      */
 
     score += (symbols[1] < symbols[0]) * 2;
     score += (symbols[2] > symbols[1]) * 2;
-    score += (symbols[3] > symbols[2]) * 2;
+    score += (symbols[3] > symbols[2]);
     score += (symbols[4] < symbols[2]);
     score += (symbols[5] < symbols[2]);
     score += (symbols[6] < symbols[7]) * 2;
     score += (symbols[7] > symbols[8]) * 2;
     score += (symbols[8] < symbols[9]) * 2;
-    score += (symbols[9] > symbols[10]) * 2;
+    score += (symbols[9] > symbols[10]);
     score += (symbols[10] < symbols[9]);
     score += (symbols[11] < symbols[9]);
     score += (symbols[12] < symbols[9]);
@@ -118,298 +229,488 @@ static uint32_t check_preamble(const uint16_t *buf, const uint32_t next_sample)
     return score;
 }
 
-static uint8_t check_df(const uint16_t *buf, const uint32_t next_sample, uint32_t *msg_bytelen)
+/*!
+ * @brief Check the provided DF code to see if it's valid
+ *
+ * @param df df code
+ * @param msg messasge context
+ * @return boolean indicating if a valid DF code was found
+ *
+ * This function also sets the message context's byte length
+ * and DF code.
+ */
+static bool check_df(const uint8_t df, struct message_context *msg)
 {
-    uint8_t df;
-    uint32_t local_next = next_sample;
-
-    df = readByte(buf, &local_next);
-    df >>= 3;
-
     switch (df) {
     case 0: case 4: case 5: case 11:
-        *msg_bytelen = MODES_SHORT_MSG_BYTES;
-        return df;
-    case 16: case 17: case 18: case 20: case 21: case 24:
-        *msg_bytelen = MODES_LONG_MSG_BYTES;
-        return df;
-    default:
-        return ERROR_DF;
-    }
-}
-
-static uint8_t find_preamble(const uint16_t *buf, uint32_t *next_sample, const uint32_t max_sample,
-    struct demod_context *ctx)
-{
-    uint32_t found_preamble = 0;
-    uint32_t score = 0;
-    uint32_t preamble_start;
-    uint32_t i;
-
-    while (*next_sample < max_sample) {
-
-        for (i = 0; i < 3; i++) {
-            score += buf[*next_sample + i];
-        }
-        if (score < ctx->threshold) {
-            *next_sample += 2;
-            continue;
-        }
-
-        score = check_preamble(buf, *next_sample);
-
-        found_preamble = (score >= 20);
-        preamble_start = *next_sample;
-
-        if (!found_preamble) {
-            if (score >= 18) {
-                *next_sample = preamble_start + 1;
-            } else if (score >= 10){
-                *next_sample = preamble_start + (samples_per_symbol / 3);
-            } else {
-                *next_sample = preamble_start + (samples_per_symbol / 2);
-            }
-            continue;
-        }
-
-        *next_sample += (samples_per_preamble);
-        Modes.stats_current.demod_preambles++;
+        msg->msg_bytelen[msg->current_message_index] = MODES_SHORT_MSG_BYTES;
+        msg->df[msg->current_message_index] = df;
         return 1;
+    case 16: case 17: case 18: case 20: case 21: case 24:
+        msg->msg_bytelen[msg->current_message_index] = MODES_LONG_MSG_BYTES;
+        msg->df[msg->current_message_index] = df;
+        return 1;
+    default:
+        return 0;
     }
-
-    return 0;
 }
 
-static inline void get_message(const uint16_t *buf, uint32_t *next_sample, uint8_t *outbuf,
-    const uint32_t msg_bytelen)
+/*!
+ * @brief Read a message from the buffer
+ *
+ * @param buf input buffer
+ * @param next position in buffer to read
+ * @param msg message context
+ * @return score
+ */
+static int32_t get_message(const uint32_t *buf, uint32_t next, struct message_context *msg)
 {
     uint32_t i;
+    int32_t best_score = -100;
+    uint8_t df_byte;
 
-    for (i = 0; i < msg_bytelen; i++) {
-        outbuf[i] = readByte(buf, next_sample);
+    /*
+     * Score "msg_decode_tries" times, incrementing the buffer pointer each time.
+     * When we're done, keep the one with the best score (if there is one).
+     *
+     * Stopping after we find the first "good" score can decrease the number of
+     * accepted messages by a good 5% whereas continuing and keeping the best
+     * costs almost nothing (provided the "tries" count is reasonable).
+     */
+    for (i = 0; i < ((const uint32_t)msg_decode_tries); i++) {
+        msg->current_message_index = i;
+        /*
+         * Fast Fail.  If we don't have a valid DF, don't bother reading the rest of the message.
+         */
+        df_byte = readByte(buf, next + i, msg);
+        if (!check_df(df_byte >> 3, msg)) {
+            msg->sum_mark_signal_level[i] = 0;
+            continue;
+        }
+        msg->messages_scored++;
+        msg->buffer[i][0] = df_byte;
+        readBytes(buf, next + i + samples_per_byte, &msg->buffer[i][1], msg->msg_bytelen[i] - 1, msg);
+        msg->score[i] = scoreModesMessage(msg->buffer[i], msg->msg_bytelen[i] << 3);
+        if (msg->score[i] > best_score) {
+            best_score = msg->score[i];
+            msg->best_message = msg->buffer[i];
+            msg->best_message_start = next + i;
+            msg->best_message_index = i;
+        }
+    }
+
+    /*
+     * Keep track of the successful offsets to aid in tuning msg_decode_tries.
+     */
+    if (Modes.stats && best_score > 0) {
+        decode_distro[msg->best_message_index]++;
+    }
+
+    return best_score;
+}
+
+/*!
+ * @brief Creates a running sum if teh inpout buffer
+ *
+ * @param in unaltered input buffer
+ * @param out summed output with threshold applied
+ * @param len samples to process
+ * @param threshold threshold value to apply
+ */
+static void running_sum(uint16_t *in, uint32_t *out, unsigned len, const uint16_t threshold)
+{
+    uint32_t i;
+    uint32_t j;
+    uint16_t s;
+
+    for (i = 0; i < len; i++) {
+        out[i] = 0;
+        for (j = 0; j < running_sum_window; j++) {
+            /*
+             * The whole process seems to work better if we reduce
+             * the magnitude by half before applying the threshold
+             * and adding the result.
+             */
+            s = (in[i + j] >> 1 );
+            s = s < threshold ? 0 : s - threshold;
+            out[i]+=s;
+        }
     }
 }
 
+/*!
+ * @brief Main demodulator task
+ *
+ * @param data mag_buf from core
+ */
 static void demodulateHiRateTask(void *data)
 {
-
     struct mag_buf *mag = data;
-    uint16_t *uin = mag->data;
-    uint8_t message_buffer[3][15] = { 0, };
-    uint8_t *final_message_buffer;
-    int32_t score[3];
-    int32_t final_score;
-
-    uint8_t format_code;
+    uint32_t *uin;
+    uint32_t *samplebuf;
+    uint32_t mlen = mag->validLength - mag->overlap;
     uint32_t next_sample = 0;
-    uint32_t preamble_start;
     uint32_t message_start;
+    uint32_t message_start_offset;
+    struct message_context msg_buffer;
+    uint8_t *best_msg;
+    int32_t score;
+    uint32_t msg_bitlen;
+    uint32_t msg_samplelen;
     static struct modesMessage zeroMessage;
     struct modesMessage mm;
-    uint64_t sum_scaled_signal_power = 0;
-    uint32_t mlen = mag->validLength - mag->overlap - 1;
-    uint32_t msg_bytelen = MODES_LONG_MSG_BYTES;
-    uint32_t msg_bitlen = MODES_LONG_MSG_BYTES << 3;
-    uint32_t msg_samplelen = msg_bitlen * samples_per_bit;
-    double sum_signal_power;
-    double signal_power;
-    uint64_t scaled_signal_power = 0;
-    struct demod_context ctx = {0, };
-    uint32_t k;
+    uint16_t threshold = ((uint16_t)(mag->mean_level * MAX_AMPLITUDE)) * threshold_factor;
+    uint64_t sum_signal_level;
+    uint64_t mean_signal_level;
+    double signal_Vpk;
 
-//    ctx.threshold = sqrt(Modes.stats_current.noise_power_sum / Modes.stats_current.noise_power_count) * MAX_AMPLITUDE;
-    ctx.threshold = (mag->mean_level * MAX_AMPLITUDE);
-    ctx.threshold *= 1.15;
-
-    for (k = 0; k < mlen; k++) {
-        if (uin[k] <= ctx.threshold) {
-            uin[k] = 0;
-        } else {
-            uin[k] -= ctx.threshold;
-        }
-    }
+    /*
+     * We need to keep the original buffer to calculate signal strength
+     * so we need to allocate a new one to hold the results of the
+     * running sum.
+     */
+    uin = malloc(sizeof(*uin) * mag->validLength);
+    running_sum(mag->data, uin, mlen, threshold);
 
     while (next_sample < mlen) {
-
-        /* Scan forward in the buffer until we find a valid preamble or run out of buffer */
-        if (!find_preamble(uin, &next_sample, mlen, &ctx)) {
-            break;
-        }
-
         /*
-         * find_preamble will have adjusted next_sample to point to the
-         * next sample after the preamble
+         * Fast Fail.  A preamble can't start with samples below the threshold
+         * so we just skip over them.
          */
-        preamble_start = next_sample - samples_per_preamble;
-        message_start = next_sample;
-
-        /*
-         * Statistically, if the DF code pointed to by next_sample
-         * isn't valid, backing up a sample at a time can increase
-         * the chances of detecting a valid one with minimal
-         * overhead.
-         */
-        format_code = check_df(uin, next_sample, &msg_bytelen);
-        if (format_code == ERROR_DF) {
-            next_sample -= 1;
-            format_code = check_df(uin, next_sample, &msg_bytelen);
-        }
-        if (format_code == ERROR_DF) {
-            next_sample -= 1;
-            format_code = check_df(uin, next_sample, &msg_bytelen);
-        }
-        /*
-         * We've backed up twice to no avail.
-         * Restart the preamble search 2 samples after the start of
-         * the current preamble.
-         */
-        if (format_code == ERROR_DF) {
-            next_sample = preamble_start + 2;
+        if (uin[next_sample] < threshold) {
+            next_sample += 1;
             continue;
         }
 
         /*
-         * If we got the DF code, then we also know the message length.
+         * samplebuf marks the start of this test.
          */
-        msg_bitlen = msg_bytelen << 3;
+        samplebuf = uin + next_sample;
+
+        /*
+         * Is there a valid preamble?
+         */
+        score = check_preamble(samplebuf);
+        if (score < preamble_score) {
+            next_sample += 1;
+            continue;
+        }
+
+        Modes.stats_current.demod_preambles++;
+        /*
+         * Initially, message_start is set to the calculated location
+         * in the buffer.
+         */
+        message_start = samples_per_preamble;
+        memset(&msg_buffer, 0, sizeof(msg_buffer));
+        msg_buffer.threshold = threshold;
+
+        /*
+         * The search for valid messages actually starts _before_ the calculated
+         * start position.  We back up by half the number of tries so the calculated
+         * position is in the middle of the search range.
+         */
+        message_start_offset = (msg_decode_tries / 2);
+        /*
+         * The pristine_buffer is an index into the unmodified input buffer that
+         * corresponds to the start of the samplebuffer.  We need this to calculate
+         * the correct signal level.
+         */
+        msg_buffer.pristine_buffer = mag->data + next_sample - message_start_offset;
+
+        score = get_message(samplebuf, message_start - message_start_offset, &msg_buffer);
+        best_msg = msg_buffer.best_message;
+
+        if (score < 0) {
+            if (score == -1) {
+                Modes.stats_current.demod_rejected_unknown_icao++;
+            } else {
+                Modes.stats_current.demod_rejected_bad++;
+            }
+            next_sample += 1;
+            continue;
+        }
+        msg_bitlen = msg_buffer.msg_bytelen[msg_buffer.best_message_index] << 3;
         msg_samplelen = msg_bitlen * samples_per_bit;
 
-        score[1] = -100;
-        score[2] = -100;
-
         /*
-         * Like the DF code, we can get a better decode rate by
-         * scoring the message 3 times and taking the best one.
-         * In this case though, we get better results by moving
-         * forward in the sample buffer rather than backing up.
+         * We no have to adjust message_start to point to the start of
+         * the best scored message which is the one we're going to use.
          */
-        get_message(uin, &next_sample, message_buffer[0], msg_bytelen);
-        score[0] = scoreModesMessage(message_buffer[0], msg_bitlen);
-
-        next_sample = message_start + 1;
-        get_message(uin, &next_sample, message_buffer[1], msg_bytelen);
-        score[1] = scoreModesMessage(message_buffer[1], msg_bitlen);
-/*
-        next_sample = message_start + 2;
-        get_message(uin, &next_sample, message_buffer[2], msg_bytelen);
-        score[2] = scoreModesMessage(message_buffer[2], msg_bitlen);
-*/
-#define BEST_SCORE(__score) \
-({ \
-    int32_t __m = 0, __i, __fi = 0; \
-    for (__i = 0; __i < 3; __i++) { \
-        if (__score[__i] > __m) { \
-            __m = __score[__i]; \
-            __fi = __i; \
-        } \
-    } \
-    (__fi); \
-})
-
-        int32_t best_score_ix = BEST_SCORE(score);
-        final_score = score[best_score_ix];
-        final_message_buffer = message_buffer[best_score_ix];
-        next_sample = message_start + best_score_ix + msg_samplelen - samples_per_byte;
-
-        if (final_score < 0) {
-            reportScore(final_score);
-            /* Back to where we started, move forward 1 sample, then search for preamble again */
-            next_sample = preamble_start + 1;
-            continue;
-        }
+        message_start = msg_buffer.best_message_start;
 
         // Set initial mm structure details
         mm = zeroMessage;
 
-        // For consistency with how the Beast / Radarcape does it,
-        // we report the timestamp at the end of bit 56 (even if
-        // the frame is a 112-bit frame)
-        mm.timestampMsg = mag->sampleTimestamp + (preamble_start / samples_per_bit) + (8 + 56) * 12;
+        /*
+         * For consistency with how the Beast / Radarcape does it,
+         * we report the timestamp at the end of bit 56 (even if
+         * the frame is a 112-bit frame)
+         */
+        mm.timestampMsg = mag->sampleTimestamp +
+            //  preamble start offset in 12MHz clock ticks from input buffer start
+            ((next_sample * 12) / samples_per_bit) +
+            //  message-end offset from preamble start in 12MHz clock ticks
+            ((8 + 56) * 12);
 
         // compute message receive time as block-start-time + difference in the 12MHz clock
         mm.sysTimestampMsg = mag->sysTimestamp + receiveclock_ms_elapsed(mag->sampleTimestamp, mm.timestampMsg);
 
-        mm.score = final_score;
+        mm.score = score;
 
-        final_score = decodeModesMessage(&mm, final_message_buffer);
-        if (final_score < 0) {
-            /*
-             * This is going to be very rare since we already got a good score.
-             * If we fail now, we probably won't do any better on a retry
-             * so just toss the message and look for the next one.
-             */
-            reportScore(final_score);
+        score = decodeModesMessage(&mm, best_msg);
+        if (score < 0) {
+            if (score == -1) {
+                Modes.stats_current.demod_rejected_unknown_icao++;
+            } else {
+                Modes.stats_current.demod_rejected_bad++;
+            }
+            next_sample += 1;
             continue;
         }
 
-        // measure signal power
-        scaled_signal_power = 0;
-        for (k = 0; k < msg_samplelen; ++k) {
-            uint32_t mag = uin[message_start + k] + ctx.threshold;
-            scaled_signal_power += mag * mag;
+        Modes.stats_current.demod_accepted[mm.correctedbits]++;
+
+        /*
+         * As we were reading the message, we were accumulating the raw signal levels
+         * from the input buffer for all of the "mark" symbols.  Since there is ALWAYS
+         * one "mark" symbol per bit in the message, we can divide the accumulated
+         * level by the number of bits in the message to get the mean singal level.
+         */
+        sum_signal_level = msg_buffer.sum_mark_signal_level[msg_buffer.best_message_index];
+        mean_signal_level = sum_signal_level / msg_bitlen;
+
+        /* Scale the mean level (0 -> 65535) to 0.0 -> 1.0 */
+        signal_Vpk = (mean_signal_level / MAX_AMPLITUDE);
+        /* mm.signalLevel is actually the power, not level */
+        mm.signalLevel = (signal_Vpk * signal_Vpk);
+        Modes.stats_current.signal_power_sum += mm.signalLevel;
+        Modes.stats_current.signal_power_count += 1;
+
+        if (mm.signalLevel > Modes.stats_current.peak_signal_power) {
+
+            Modes.stats_current.peak_signal_power = mm.signalLevel;
         }
 
-        signal_power = scaled_signal_power / MAX_AMPLITUDE / MAX_AMPLITUDE;
-        mm.signalLevel = signal_power / msg_samplelen;
-        sum_scaled_signal_power += scaled_signal_power;
+        /* If the signal power is above -3dBFS increment the "strong signal" counter. */
+        if (mm.signalLevel > 0.50119) {
+            Modes.stats_current.strong_signal_count++;
+        }
 
-        reportMessage(&mm, signal_power, msg_samplelen);
+        /*
+         * Now update the noise stats from the power that was calculated
+         * during conversion.
+         */
+        Modes.stats_current.noise_power_sum += mag->mean_power;
+        Modes.stats_current.noise_power_count += 1;
+
+        /* That's it.  Use the message. */
+        useModesMessage(&mm);
+
+        /*
+         * From demod_2400 comments...
+         * Skip over the message:
+         * (we actually skip to 8 bits before the end of the message,
+         * because we can often decode two messages that *almost* collide,
+         * where the preamble of the second message clobbered the last
+         * few bits of the first message, but the message bits didn't
+         * overlap)
+         */
+        next_sample += (msg_samplelen - samples_per_preamble);
     }
 
-    sum_signal_power = sum_scaled_signal_power / MAX_AMPLITUDE / MAX_AMPLITUDE;
-
-    Modes.stats_current.noise_power_count += mlen;
-    Modes.stats_current.samples_processed += mlen;
-    Modes.stats_current.samples_dropped += mag->dropped;
-    Modes.stats_current.noise_power_sum += ((mag->mean_power * mlen) - sum_signal_power);
-
+    free(uin);
 }
 
-static void reportScore(int score)
-{
-    if (score == -1) {
-        Modes.stats_current.demod_rejected_unknown_icao++;
-    } else {
-        Modes.stats_current.demod_rejected_bad++;
-    }
-}
-
-static void reportMessage(struct modesMessage *mm, double signal_power, int signal_len)
-{
-    Modes.stats_current.demod_accepted[mm->correctedbits]++;
-    Modes.stats_current.signal_power_count += signal_len;
-    if (mm->signalLevel > 0.50119) {
-        Modes.stats_current.strong_signal_count++; // signal power above -3dBFS
-    }
-
-    Modes.stats_current.signal_power_sum += signal_power;
-    if (mm->signalLevel > Modes.stats_current.peak_signal_power) {
-        Modes.stats_current.peak_signal_power = mm->signalLevel;
-    }
-    useModesMessage(mm);
-}
-
+/*!
+ * @brief Public demodulate function called by the core
+ *
+ * @param mag mag_buf from core
+ */
 void demodulateHiRate(struct mag_buf *mag)
 {
     struct timespec start_time;
 
     start_cpu_timing(&start_time);
     demodulateHiRateTask(mag);
+    Modes.stats_current.samples_processed += mag->validLength - mag->overlap;
+    Modes.stats_current.samples_dropped += mag->dropped;
+
     end_cpu_timing(&start_time, &Modes.stats_current.demod_cpu);
     fifo_release(mag);
 }
 
+/*!
+ * @brief Demodulator initialization
+ * @param context (not used)
+ */
 void demodulateHiRateInit(void *context)
 {
     MODES_NOTUSED(context);
 
-    samples_per_symbol = (const uint32_t)(Modes.sample_rate / ADSB_SYMBOL_RATE);
+    samples_per_symbol = (uint32_t)(Modes.sample_rate / ADSB_SYMBOL_RATE);
     samples_per_bit = samples_per_symbol * SYMBOLS_PER_BIT;
     samples_per_byte = samples_per_bit * 8;
     samples_per_preamble = BITS_PER_PREAMBLE * samples_per_bit;
+    max_samples_per_frame = MODES_LONG_MSG_BYTES * samples_per_byte + samples_per_preamble;
+
+#ifdef ALLOW_OPTIONS
+    fprintf(stderr, "Demod HiRate:\n");
+#ifdef ALLOW_HIRATE_THRESHOLD
+    fprintf(stderr, "  hirate-threshold:       %4.1f\n", threshold_factor);
+#endif
+#ifdef ALLOW_HIRATE_SCORE
+    fprintf(stderr, "     hirate-score:        %4d\n", preamble_score);
+#endif
+#ifdef ALLOW_HIRATE_WINDOW
+    fprintf(stderr, "     hirate-window:       %4d\n", running_sum_window);
+#endif
+#ifdef ALLOW_HIRATE_TRIES
+    fprintf(stderr, "      hirate-tries:       %4d\n", msg_decode_tries);
+#endif
+    fprintf(stderr, "\n");
+#endif
 }
 
+/*!
+ * Demodulator cleanup
+ * @param context (not used)
+ */
 void demodulateHiRateFree(void *context)
 {
     MODES_NOTUSED(context);
+
+    if (Modes.stats) {
+        uint32_t i;
+        int maxlen = 0;;
+        char buf[65];
+
+        for (i = 0; i < msg_decode_tries; i++) {
+            int len = sprintf(buf, "%"PRIu64"", decode_distro[i]);
+            if (len > maxlen) {
+                maxlen = len;
+            }
+        }
+
+        printf("\n");
+        printf("Demod Hirate:\n");
+        printf("Successful Message Decode Offsets\n");
+        printf("Decode Tries: %d\n", msg_decode_tries);
+            printf("Offset   %*s\n", maxlen, "Count");
+
+        for (i = 0; i < msg_decode_tries; i++) {
+            printf("%3d:    %*" PRIu64 "\n", i -( msg_decode_tries / 2), maxlen + 2, decode_distro[i]);
+        }
+        printf("\n");
+    }
+
 }
+
+#ifdef ALLOW_OPTIONS
+/*!
+ * @brief Print demodulator options help
+ */
+void demodulateHiRateHelp(void)
+{
+    printf("      HiRate Demodulator specific options (use with --demod hirate)\n");
+
+    printf("\n");
+#ifdef ALLOW_HIRATE_THRESHOLD
+    printf("--hirate-threshold <threshold>      A multiplication factor applied to the\n");
+    printf("                                    mean buffer signal strength.  Samples\n");
+    printf("                                    below the adjusted value will be forced\n");
+    printf("                                    to 0.  The default is %3.1f\n", DEFAULT_HIRATE_THRESHOLD);
+#endif
+#ifdef ALLOW_HIRATE_SCORE
+    printf("--hirate-score <preamble score>     The passing score for a successful preamble\n");
+    printf("                                    test.  Perfect score is %d.  Default is %d.\n",
+        PERFECT_PREAMBLE_SCORE, PERFECT_PREAMBLE_SCORE - 1);
+#endif
+#ifdef ALLOW_HIRATE_WINDOW
+    printf("--hirate-window <samples>           How many samples are summed together to\n");
+    printf("                                    determine the value of a symbol.\n");
+    printf("                                    Must > 1.  The default is %d.\n", DEFAULT_HIRATE_WINDOW);
+#endif
+#ifdef ALLOW_HIRATE_TRIES
+    printf("--hirate-tries <tries>              The number of attempts made to decode the\n");
+    printf("                                    same set of samples.\n");
+    printf("                                    Must be between 1 and %d.\n", MSG_MAX_DECODE_TRIES - 1);
+    printf("                                    The default is %d\n", DEFAULT_HIRATE_TRIES);
+#endif
+    printf("\n");
+}
+#else
+void demodulateHiRateHelp(void)
+{
+
+}
+#endif
+
+#ifdef ALLOW_OPTIONS
+/*!
+ * @brief Process demodulator options
+ *
+ * @param argc
+ * @param argv
+ * @param jptr
+ * @return boolean indicating whether option was handled or not
+ */
+bool demodulateHiRateOptions(int argc, char **argv, int *jptr)
+{
+    int j = *jptr;
+    bool more = (j+1 < argc);
+    if (0) {
+#ifdef ALLOW_HIRATE_THRESHOLD
+    } else if (!strcmp(argv[j], "--hirate-threshold") && more) {
+        threshold_factor = atof(argv[j + 1]);
+        if (threshold_factor < 0.0) {
+            fprintf(stderr, "Error: %s must be non-negative\n", argv[j]);
+            return false;
+        }
+        j++;
+#endif
+#ifdef ALLOW_HIRATE_SCORE
+    } else if (!strcmp(argv[j], "--hirate-score") && more) {
+        preamble_score = atoi(argv[j + 1]);
+        if (preamble_score < 0 || preamble_score > PERFECT_PREAMBLE_SCORE) {
+            fprintf(stderr, "Error: %s must be between 0 and %d\n", argv[j], PERFECT_PREAMBLE_SCORE);
+            return false;
+        }
+        j++;
+#endif
+#ifdef ALLOW_HIRATE_WINDOW
+    } else if (!strcmp(argv[j], "--hirate-window") && more) {
+        running_sum_window = atoi(argv[j + 1]);
+        if (running_sum_window <= 0) {
+            fprintf(stderr, "Error: %s must be > 0\n", argv[j]);
+            return false;
+        }
+        j++;
+#endif
+#ifdef ALLOW_HIRATE_TRIES
+    } else if (!strcmp(argv[j], "--hirate-tries") && more) {
+        msg_decode_tries = atoi(argv[j + 1]);
+        if (msg_decode_tries >= MSG_MAX_DECODE_TRIES) {
+            fprintf(stderr, "Error: %s must be between 1 and %d\n", argv[j], MSG_MAX_DECODE_TRIES);
+            return false;
+        }
+        j++;
+#endif
+    } else {
+        return false;
+    }
+
+    *jptr = j;
+
+    return true;
+}
+#else
+bool demodulateHiRateOptions(int argc, char **argv, int *jptr)
+{
+    MODES_NOTUSED(argc);
+    MODES_NOTUSED(argv);
+    MODES_NOTUSED(jptr);
+
+    return false;
+}
+#endif

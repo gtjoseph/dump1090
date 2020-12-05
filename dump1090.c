@@ -278,6 +278,9 @@ static void showVersion()
 #ifdef ENABLE_LIMESDR
            "ENABLE_LIMESDR "
 #endif
+#ifdef ENABLE_AIRSPY
+           "ENABLE_AIRSPY "
+#endif
 #ifdef SC16Q11_TABLE_BITS
     // This is a little silly, but that's how the preprocessor works..
 #define _stringize(x) #x
@@ -297,6 +300,8 @@ static void showHelp(void)
 
     sdrShowHelp();
 
+    demodShowHelp();
+
     printf(
 "      Common options\n"
 "\n"
@@ -310,9 +315,6 @@ static void showHelp(void)
 "                         u16o12: unsigned real 16 bit offset 12 bits\n"
 "                         sc16q11: signed complex 16 bit Q11 format (default for bladerf)\n"
 "                         Not all SDRs can support different formats\n"
-"--demod <demod>          Set demodulator\n"
-"                         2400: Default for 2.4MHz sample rate\n"
-"                         hirate: Can be used for sample rates >= 6MS/s\n"
 "--interactive            Interactive mode refreshing data on screen. Implies --throttle\n"
 "--interactive-ttl <sec>  Remove from list if idle for <sec> (default: 60)\n"
 "--interactive-show-distance   Show aircraft distance and bearing instead of lat/lon\n"
@@ -712,6 +714,8 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[j], "--json-location-accuracy") && more) {
             Modes.json_location_accuracy = atoi(argv[++j]);
         } else if (sdrHandleOption(argc, argv, &j)) {
+            /* handled */
+        } else if (demodHandleOption(argc, argv, &j)) {
             /* handled */
         } else {
             fprintf(stderr,

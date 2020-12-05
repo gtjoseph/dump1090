@@ -244,6 +244,8 @@ bool airspyOpen()
         AirSpy.linearity_gain = 21;
     }
 
+    airspy_init();
+
     if (AirSpy.serial) {
         status = airspy_open_sn(&AirSpy.device, AirSpy.serial);
     } else {
@@ -381,6 +383,7 @@ void airspyClose()
     if (AirSpy.device) {
         airspy_stop_rx(AirSpy.device);
         airspy_close(AirSpy.device);
+        airspy_exit();
         AirSpy.device = NULL;
     }
 }

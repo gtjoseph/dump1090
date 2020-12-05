@@ -399,6 +399,8 @@ struct modesMessage {
     uint64_t      sysTimestampMsg;                // Timestamp of the message (system time)
     int           remote;                         // If set this message is from a remote station
     double        signalLevel;                    // RSSI, in the range [0..1], as a fraction of full-scale power
+    double        noiseLevel;                     // Noise, in the range [0..1], as a fraction of full-scale power
+                                                  //  Not populated by demod_2400.
     int           score;                          // Scoring from scoreModesMessage, if used
     int           reliable;                       // is this a "reliable" message (uncorrected DF11/DF17/DF18)?
 

@@ -271,6 +271,11 @@ static __attribute__((aligned)) float powers2048[2048];
 /*
  * Converts 0 -> 2047 scaled magnitudes to 0 -> 65535
  * scaled magnitudes for use by the demodulators.
+ *
+ * I know what you're thinking. Skipping the LUT and just
+ * doing s64k = (((s2k + 1) << 5) - 1) directly in the
+ * converter should be fast but the LUT is actually worth
+ * a savings of 2% CPU even on an x86_64 platform.
  */
 static __attribute__((aligned)) uint16_t scaled65k2048[2048];
 
@@ -284,7 +289,7 @@ static bool init_uint16()
     for(i = 0; i < (int)ARRAY_SIZE(magnitudes2048); i++) {
         magnitudes2048[i] = i / 2047.0f;
         powers2048[i] = magnitudes2048[i] * magnitudes2048[i];
-        scaled65k2048[i] = magnitudes2048[i] * 65535.0f + 0.5f;
+        scaled65k2048[i] = magnitudes2048[i] * MAX_AMPLITUDE + 0.5;
     }
 
     return 1;
@@ -313,7 +318,7 @@ static void convert_int16(void *int_data,
 
     for (i = 0; i < nsamples; i++) {
         /*
-         * Get the absolute value and rescale it to 0-2047
+         * Get the absolute value (0 - 32767) and rescale it to 0-2047
          * so we can use the LUTs.
          */
         in[i] = ABS(in[i]) >> 4;

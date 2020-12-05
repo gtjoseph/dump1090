@@ -26,6 +26,8 @@ typedef enum { DEMOD_2400 = 0, DEMOD_HIRATE, DEMOD_NONE } demodulator_type_t;
 typedef void (* demod_fn_t)(struct mag_buf *mag);
 typedef void (* demod_init_fn_t)(void *);
 typedef void (* demod_free_fn_t)(void *);
+typedef bool (* demod_handle_option_t)(int argc, char **argv, int *jptr);
+typedef void (* demod_show_help_t)(void);
 
 typedef struct {
     const char *name;
@@ -33,10 +35,14 @@ typedef struct {
     demod_fn_t demod_fn;
     demod_init_fn_t demod_init_fn;
     demod_free_fn_t demod_free_fn;
+    demod_handle_option_t demod_handle_option_fn;
+    demod_show_help_t demod_show_help_fn;
 } demodulator_t;
 
 demodulator_t *demodGetByType(demodulator_type_t demod_type);
 demodulator_t *demodGetByName(const char *name);
 const char *demodGetName(demodulator_type_t demod_type);
+bool demodHandleOption(int argc, char **argv, int *jptr);
+void demodShowHelp(void);
 
 #endif

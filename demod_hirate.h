@@ -26,5 +26,7 @@
 void demodulateHiRate(struct mag_buf *mag);
 void demodulateHiRateInit(void *context);
 void demodulateHiRateFree(void *context);
+bool demodulateHiRateOptions(int argc, char **argv, int *jptr);
+void demodulateHiRateHelp(void);
 
 #endif
