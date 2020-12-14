@@ -281,15 +281,10 @@ static void showVersion()
 #ifdef ENABLE_AIRSPY
            "ENABLE_AIRSPY "
 #endif
+    );
 #ifdef SC16Q11_TABLE_BITS
-    // This is a little silly, but that's how the preprocessor works..
-#define _stringize(x) #x
-#define stringize(x) _stringize(x)
-           "SC16Q11_TABLE_BITS=" stringize(SC16Q11_TABLE_BITS)
-#undef stringize
-#undef _stringize
+    printf("|                SC16Q11_TABLE_BITS=%-2d %-36s |\n", SC16Q11_TABLE_BITS, "");
 #endif
-           );
     printf("-----------------------------------------------------------------------------\n");
     printf("\n");
 }
