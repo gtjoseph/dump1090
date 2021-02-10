@@ -112,6 +112,8 @@ static void modesInitConfig(void) {
     // Now initialise things that should not be 0/NULL to their defaults
     Modes.gain                    = MODES_MAX_GAIN;
     Modes.freq                    = MODES_DEFAULT_FREQ;
+    Modes.sample_rate             = 0.0f;
+    Modes.sample_format           = INPUT_NONE;
     Modes.check_crc               = 1;
     Modes.net_heartbeat_interval  = MODES_NET_HEARTBEAT_INTERVAL;
     Modes.interactive_display_ttl = MODES_INTERACTIVE_DISPLAY_TTL;
@@ -129,7 +131,21 @@ static void modesInitConfig(void) {
 static void modesInit(void) {
     int i;
 
-    Modes.sample_rate = 2400000.0;
+    if (Modes.sample_rate == 0.0f) {
+        Modes.sample_rate = sdrGetDefaultSampleRate();
+    }
+
+    if (Modes.sample_format == INPUT_NONE) {
+        Modes.sample_format = sdrGetDefaultSampleFormat();
+    }
+
+    if (Modes.demod == NULL) {
+        Modes.demod = demodGetByType(sdrGetDefaultDemodulatorType());
+    }
+
+    if (Modes.demod->demod_init_fn) {
+        Modes.demod->demod_init_fn();
+    }
 
     // Allocate the various buffers used by Modes
     Modes.trailing_samples = (MODES_PREAMBLE_US + MODES_LONG_MSG_BITS + 16) * 1e-6 * Modes.sample_rate;
@@ -294,15 +310,30 @@ static void showDSP()
 
 static void showHelp(void)
 {
+    int i;
+
     showVersion();
 
     sdrShowHelp();
+
+    demodShowHelp();
 
     printf(
 "      Common options\n"
 "\n"
 "--gain <db>              Set gain (default: max gain. Use -10 for auto-gain)\n"
 "--freq <hz>              Set frequency (default: 1090 Mhz)\n"
+"--sample-rate <Hz or MHz>     Set sample rate (default: 2.4 MHz)\n"
+"--sample-format <format>      Set sample format.  One of:\n");
+
+    for (i = 0; i < INPUT_NONE; i++) {
+printf(
+"                         %s: %s %s\n", formatGetName(i), formatGetDescription(i), i ? "" : "(default)"
+);
+    }
+
+    printf(
+"                         Currently, only the ifile sdr supports different formats\n"
 "--interactive            Interactive mode refreshing data on screen. Implies --throttle\n"
 "--interactive-ttl <sec>  Remove from list if idle for <sec> (default: 60)\n"
 "--interactive-show-distance   Show aircraft distance and bearing instead of lat/lon\n"
@@ -532,6 +563,17 @@ int main(int argc, char **argv) {
             Modes.dev_name = strdup(argv[++j]);
         } else if (!strcmp(argv[j],"--gain") && more) {
             Modes.gain = (int) (atof(argv[++j])*10); // Gain is in tens of DBs
+        } else if (!strcmp(argv[j], "--sample-rate") && more) {
+            Modes.sample_rate = atof(argv[++j]);
+            if (Modes.sample_rate < 1e6) {
+                Modes.sample_rate *= 1e6;
+            }
+        } else if (!strcmp(argv[j],"--sample-format") && more) {
+            Modes.sample_format = formatGetByName(argv[++j]);
+            if (Modes.sample_format == INPUT_NONE) {
+                fprintf(stderr, "warning: --sample-format '%s' is unknown.  Will use default for device-type.\n",
+                        argv[j]);
+            }
         } else if (!strcmp(argv[j],"--dcfilter")) {
 #if 0
             Modes.dc_filter = 1;
@@ -769,17 +811,7 @@ int main(int argc, char **argv) {
                 // Process one buffer
 
                 start_cpu_timing(&start_time);
-                demodulate2400(buf);
-                if (Modes.mode_ac) {
-                    demodulate2400AC(buf);
-                }
-
-                Modes.stats_current.samples_processed += buf->validLength - buf->overlap;
-                Modes.stats_current.samples_dropped += buf->dropped;
-                end_cpu_timing(&start_time, &Modes.stats_current.demod_cpu);
-
-                // Return the buffer to the FIFO freelist for reuse
-                fifo_release(buf);
+                Modes.demod->demod_fn(buf);
 
                 // We got something so reset the watchdog
                 watchdogCounter = 10;
@@ -799,6 +831,9 @@ int main(int argc, char **argv) {
         log_with_timestamp("Waiting for receive thread termination");
         fifo_halt(); // Reader thread should do this anyway, but just in case..
         pthread_join(Modes.reader_thread,NULL);     // Wait on reader thread exit
+        if (Modes.demod->demod_free_fn) {
+            Modes.demod->demod_free_fn();
+        }
     }
 
     interactiveCleanup();

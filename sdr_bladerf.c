@@ -484,3 +484,18 @@ void bladeRFClose()
         BladeRF.device = NULL;
     }
 }
+
+input_format_t bladeRFGetDefaultSampleFormat()
+{
+    return INPUT_SC16Q11;
+}
+
+double bladeRFGetDefaultSampleRate()
+{
+    return 2400000.0f;
+}
+
+demodulator_type_t bladeRFGetDefaultDemodulatorType()
+{
+    return DEMOD_2400;
+}

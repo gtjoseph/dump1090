@@ -26,5 +26,8 @@ bool hackRFHandleOption(int argc, char **argv, int *jptr);
 bool hackRFOpen();
 void hackRFRun();
 void hackRFClose();
+input_format_t hackRFGetDefaultSampleFormat();
+double hackRFGetDefaultSampleRate();
+demodulator_type_t hackRFGetDefaultDemodulatorType();
 
 #endif

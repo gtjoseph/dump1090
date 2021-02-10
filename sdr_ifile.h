@@ -29,5 +29,8 @@ bool ifileHandleOption(int argc, char **argv, int *jptr);
 bool ifileOpen();
 void ifileRun();
 void ifileClose();
+input_format_t ifileGetDefaultSampleFormat();
+double ifileGetDefaultSampleRate();
+demodulator_type_t ifileGetDefaultDemodulatorType();
 
 #endif
