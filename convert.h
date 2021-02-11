@@ -36,8 +36,5 @@ iq_convert_fn init_converter(input_format_t format,
                              struct converter_state **out_state);
 
 void cleanup_converter(struct converter_state *state);
-const char *formatGetName(input_format_t format_type);
-input_format_t formatGetByName(const char *name);
-int formatGetBytesPerSample(input_format_t format_type);
 
 #endif
