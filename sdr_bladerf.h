@@ -28,5 +28,8 @@ bool bladeRFHandleOption(int argc, char **argv, int *jptr);
 bool bladeRFOpen();
 void bladeRFRun();
 void bladeRFClose();
+input_format_t bladeRFGetDefaultSampleFormat();
+double bladeRFGetDefaultSampleRate();
+demodulator_type_t bladeRFGetDefaultDemodulatorType();
 
 #endif

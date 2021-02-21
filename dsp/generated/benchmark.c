@@ -113,6 +113,230 @@ static bool starch_benchmark_flavor_in_list(const char *flavor, const starch_ben
 
 
 /* prototypes for benchmark helpers provided by user code */
+void starch_boxcar_u16_benchmark (void);
+bool starch_boxcar_u16_benchmark_verify ( const uint16_t * arg0, unsigned arg1, unsigned arg2, uint16_t * arg3 );
+
+/* prototype the benchmarking function so that we can build with -Wmissing-declarations */
+void starch_boxcar_u16_benchmark(void);
+
+static void starch_benchmark_one_boxcar_u16( starch_boxcar_u16_regentry * _entry, const uint16_t * arg0, unsigned arg1, unsigned arg2, uint16_t * arg3 )
+{
+    fprintf(stderr, "  %-40s  ", _entry->name);
+
+    /* test for support */
+    if (_entry->flavor_supported && !(_entry->flavor_supported())) {
+        fprintf(stderr, "unsupported\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_whitelist && !starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_whitelist)) {
+        fprintf(stderr, "skipped (not whitelisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_blacklist && starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_blacklist)) {
+        fprintf(stderr, "skipped (blacklisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_list_only) {
+        fprintf(stderr, "supported\n");
+        return;
+    }
+
+    /* initial warmup */
+    for (unsigned _loop = 0; _loop < starch_benchmark_warmup_loops; ++_loop)
+        _entry->callable ( arg0, arg1, arg2, arg3 );
+
+    /* verify correctness of the output */
+    if (! starch_boxcar_u16_benchmark_verify ( arg0, arg1, arg2, arg3 )) {
+        fprintf(stderr, "skipped (verification failed)\n");
+        starch_benchmark_validation_failed = true;
+        return;
+    }
+    if (starch_benchmark_validate_only) {
+        fprintf(stderr, "validation ok\n");
+        return;
+    }
+
+    /* pre-benchmark, find a loop count that takes at least 100ms */
+    starch_benchmark_time _start, _end;
+    uint64_t _elapsed = 0;
+    uint64_t _loops = 127;
+    while (_elapsed < 100000000) {
+        _loops *= 2;
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2, arg3 );
+        starch_benchmark_get_time(&_end);
+        _elapsed = starch_benchmark_elapsed(&_start, &_end);
+    }
+
+    /* real benchmark, run for approx 1 second */
+    _loops = _loops * 1000000000 / _elapsed;
+
+    _elapsed = 0;
+    uint64_t _elapsed_min = UINT64_MAX;
+    uint64_t _elapsed_max = 0;
+    for (unsigned _iter = 0; _iter < starch_benchmark_iterations; ++_iter) {
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2, arg3 );
+        starch_benchmark_get_time(&_end);
+        uint64_t _elapsed_one = starch_benchmark_elapsed(&_start, &_end);
+        if (_elapsed_one < _elapsed_min)
+            _elapsed_min = _elapsed_one;
+        if (_elapsed_one > _elapsed_max)
+            _elapsed_max = _elapsed_one;
+        _elapsed += _elapsed_one;
+    }
+
+    uint64_t _per_loop;
+    if (starch_benchmark_iterations > 2)
+        _per_loop = (_elapsed - _elapsed_min - _elapsed_max) / _loops / (starch_benchmark_iterations - 2);
+    else
+        _per_loop = _elapsed / _loops / starch_benchmark_iterations;
+
+    fprintf(stderr, "%" PRIu64 " ns/call\n", _per_loop);
+
+    if (starch_benchmark_result_count >= starch_benchmark_result_size) {
+        if (!starch_benchmark_result_size)
+            starch_benchmark_result_size = 64;
+        else
+            starch_benchmark_result_size *= 2;
+        starch_benchmark_results = realloc(starch_benchmark_results, starch_benchmark_result_size * sizeof(*starch_benchmark_results));
+        if (!starch_benchmark_results) {
+            fprintf(stderr, "realloc: %s\n", strerror(errno));
+            exit(1);
+        }
+    }
+
+    starch_benchmark_results[starch_benchmark_result_count].name = "boxcar_u16";
+    starch_benchmark_results[starch_benchmark_result_count].impl = _entry->name;
+    starch_benchmark_results[starch_benchmark_result_count].ns = _per_loop;
+    ++starch_benchmark_result_count;
+}
+
+static void starch_benchmark_run_boxcar_u16( const uint16_t * arg0, unsigned arg1, unsigned arg2, uint16_t * arg3 )
+{
+    for (starch_boxcar_u16_regentry *_entry = starch_boxcar_u16_registry; _entry->name; ++_entry) {
+        starch_benchmark_one_boxcar_u16( _entry, arg0, arg1, arg2, arg3 );
+    }
+}
+
+/* prototypes for benchmark helpers provided by user code */
+void starch_boxcar_u16_aligned_benchmark (void);
+bool starch_boxcar_u16_aligned_benchmark_verify ( const uint16_t * arg0, unsigned arg1, unsigned arg2, uint16_t * arg3 );
+
+/* prototype the benchmarking function so that we can build with -Wmissing-declarations */
+void starch_boxcar_u16_aligned_benchmark(void);
+
+static void starch_benchmark_one_boxcar_u16_aligned( starch_boxcar_u16_aligned_regentry * _entry, const uint16_t * arg0, unsigned arg1, unsigned arg2, uint16_t * arg3 )
+{
+    fprintf(stderr, "  %-40s  ", _entry->name);
+
+    /* test for support */
+    if (_entry->flavor_supported && !(_entry->flavor_supported())) {
+        fprintf(stderr, "unsupported\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_whitelist && !starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_whitelist)) {
+        fprintf(stderr, "skipped (not whitelisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_blacklist && starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_blacklist)) {
+        fprintf(stderr, "skipped (blacklisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_list_only) {
+        fprintf(stderr, "supported\n");
+        return;
+    }
+
+    /* initial warmup */
+    for (unsigned _loop = 0; _loop < starch_benchmark_warmup_loops; ++_loop)
+        _entry->callable ( arg0, arg1, arg2, arg3 );
+
+    /* verify correctness of the output */
+    if (! starch_boxcar_u16_aligned_benchmark_verify ( arg0, arg1, arg2, arg3 )) {
+        fprintf(stderr, "skipped (verification failed)\n");
+        starch_benchmark_validation_failed = true;
+        return;
+    }
+    if (starch_benchmark_validate_only) {
+        fprintf(stderr, "validation ok\n");
+        return;
+    }
+
+    /* pre-benchmark, find a loop count that takes at least 100ms */
+    starch_benchmark_time _start, _end;
+    uint64_t _elapsed = 0;
+    uint64_t _loops = 127;
+    while (_elapsed < 100000000) {
+        _loops *= 2;
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2, arg3 );
+        starch_benchmark_get_time(&_end);
+        _elapsed = starch_benchmark_elapsed(&_start, &_end);
+    }
+
+    /* real benchmark, run for approx 1 second */
+    _loops = _loops * 1000000000 / _elapsed;
+
+    _elapsed = 0;
+    uint64_t _elapsed_min = UINT64_MAX;
+    uint64_t _elapsed_max = 0;
+    for (unsigned _iter = 0; _iter < starch_benchmark_iterations; ++_iter) {
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2, arg3 );
+        starch_benchmark_get_time(&_end);
+        uint64_t _elapsed_one = starch_benchmark_elapsed(&_start, &_end);
+        if (_elapsed_one < _elapsed_min)
+            _elapsed_min = _elapsed_one;
+        if (_elapsed_one > _elapsed_max)
+            _elapsed_max = _elapsed_one;
+        _elapsed += _elapsed_one;
+    }
+
+    uint64_t _per_loop;
+    if (starch_benchmark_iterations > 2)
+        _per_loop = (_elapsed - _elapsed_min - _elapsed_max) / _loops / (starch_benchmark_iterations - 2);
+    else
+        _per_loop = _elapsed / _loops / starch_benchmark_iterations;
+
+    fprintf(stderr, "%" PRIu64 " ns/call\n", _per_loop);
+
+    if (starch_benchmark_result_count >= starch_benchmark_result_size) {
+        if (!starch_benchmark_result_size)
+            starch_benchmark_result_size = 64;
+        else
+            starch_benchmark_result_size *= 2;
+        starch_benchmark_results = realloc(starch_benchmark_results, starch_benchmark_result_size * sizeof(*starch_benchmark_results));
+        if (!starch_benchmark_results) {
+            fprintf(stderr, "realloc: %s\n", strerror(errno));
+            exit(1);
+        }
+    }
+
+    starch_benchmark_results[starch_benchmark_result_count].name = "boxcar_u16_aligned";
+    starch_benchmark_results[starch_benchmark_result_count].impl = _entry->name;
+    starch_benchmark_results[starch_benchmark_result_count].ns = _per_loop;
+    ++starch_benchmark_result_count;
+}
+
+static void starch_benchmark_run_boxcar_u16_aligned( const uint16_t * arg0, unsigned arg1, unsigned arg2, uint16_t * arg3 )
+{
+    for (starch_boxcar_u16_aligned_regentry *_entry = starch_boxcar_u16_aligned_registry; _entry->name; ++_entry) {
+        starch_benchmark_one_boxcar_u16_aligned( _entry, arg0, arg1, arg2, arg3 );
+    }
+}
+
+/* prototypes for benchmark helpers provided by user code */
 void starch_magnitude_power_uc8_benchmark (void);
 bool starch_magnitude_power_uc8_benchmark_verify ( const uc8_t * arg0, uint16_t * arg1, unsigned arg2, double * arg3, double * arg4 );
 
@@ -333,6 +557,230 @@ static void starch_benchmark_run_magnitude_power_uc8_aligned( const uc8_t * arg0
 {
     for (starch_magnitude_power_uc8_aligned_regentry *_entry = starch_magnitude_power_uc8_aligned_registry; _entry->name; ++_entry) {
         starch_benchmark_one_magnitude_power_uc8_aligned( _entry, arg0, arg1, arg2, arg3, arg4 );
+    }
+}
+
+/* prototypes for benchmark helpers provided by user code */
+void starch_magnitude_s16_benchmark (void);
+bool starch_magnitude_s16_benchmark_verify ( const int16_t * arg0, uint16_t * arg1, unsigned arg2 );
+
+/* prototype the benchmarking function so that we can build with -Wmissing-declarations */
+void starch_magnitude_s16_benchmark(void);
+
+static void starch_benchmark_one_magnitude_s16( starch_magnitude_s16_regentry * _entry, const int16_t * arg0, uint16_t * arg1, unsigned arg2 )
+{
+    fprintf(stderr, "  %-40s  ", _entry->name);
+
+    /* test for support */
+    if (_entry->flavor_supported && !(_entry->flavor_supported())) {
+        fprintf(stderr, "unsupported\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_whitelist && !starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_whitelist)) {
+        fprintf(stderr, "skipped (not whitelisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_blacklist && starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_blacklist)) {
+        fprintf(stderr, "skipped (blacklisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_list_only) {
+        fprintf(stderr, "supported\n");
+        return;
+    }
+
+    /* initial warmup */
+    for (unsigned _loop = 0; _loop < starch_benchmark_warmup_loops; ++_loop)
+        _entry->callable ( arg0, arg1, arg2 );
+
+    /* verify correctness of the output */
+    if (! starch_magnitude_s16_benchmark_verify ( arg0, arg1, arg2 )) {
+        fprintf(stderr, "skipped (verification failed)\n");
+        starch_benchmark_validation_failed = true;
+        return;
+    }
+    if (starch_benchmark_validate_only) {
+        fprintf(stderr, "validation ok\n");
+        return;
+    }
+
+    /* pre-benchmark, find a loop count that takes at least 100ms */
+    starch_benchmark_time _start, _end;
+    uint64_t _elapsed = 0;
+    uint64_t _loops = 127;
+    while (_elapsed < 100000000) {
+        _loops *= 2;
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2 );
+        starch_benchmark_get_time(&_end);
+        _elapsed = starch_benchmark_elapsed(&_start, &_end);
+    }
+
+    /* real benchmark, run for approx 1 second */
+    _loops = _loops * 1000000000 / _elapsed;
+
+    _elapsed = 0;
+    uint64_t _elapsed_min = UINT64_MAX;
+    uint64_t _elapsed_max = 0;
+    for (unsigned _iter = 0; _iter < starch_benchmark_iterations; ++_iter) {
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2 );
+        starch_benchmark_get_time(&_end);
+        uint64_t _elapsed_one = starch_benchmark_elapsed(&_start, &_end);
+        if (_elapsed_one < _elapsed_min)
+            _elapsed_min = _elapsed_one;
+        if (_elapsed_one > _elapsed_max)
+            _elapsed_max = _elapsed_one;
+        _elapsed += _elapsed_one;
+    }
+
+    uint64_t _per_loop;
+    if (starch_benchmark_iterations > 2)
+        _per_loop = (_elapsed - _elapsed_min - _elapsed_max) / _loops / (starch_benchmark_iterations - 2);
+    else
+        _per_loop = _elapsed / _loops / starch_benchmark_iterations;
+
+    fprintf(stderr, "%" PRIu64 " ns/call\n", _per_loop);
+
+    if (starch_benchmark_result_count >= starch_benchmark_result_size) {
+        if (!starch_benchmark_result_size)
+            starch_benchmark_result_size = 64;
+        else
+            starch_benchmark_result_size *= 2;
+        starch_benchmark_results = realloc(starch_benchmark_results, starch_benchmark_result_size * sizeof(*starch_benchmark_results));
+        if (!starch_benchmark_results) {
+            fprintf(stderr, "realloc: %s\n", strerror(errno));
+            exit(1);
+        }
+    }
+
+    starch_benchmark_results[starch_benchmark_result_count].name = "magnitude_s16";
+    starch_benchmark_results[starch_benchmark_result_count].impl = _entry->name;
+    starch_benchmark_results[starch_benchmark_result_count].ns = _per_loop;
+    ++starch_benchmark_result_count;
+}
+
+static void starch_benchmark_run_magnitude_s16( const int16_t * arg0, uint16_t * arg1, unsigned arg2 )
+{
+    for (starch_magnitude_s16_regentry *_entry = starch_magnitude_s16_registry; _entry->name; ++_entry) {
+        starch_benchmark_one_magnitude_s16( _entry, arg0, arg1, arg2 );
+    }
+}
+
+/* prototypes for benchmark helpers provided by user code */
+void starch_magnitude_s16_aligned_benchmark (void);
+bool starch_magnitude_s16_aligned_benchmark_verify ( const int16_t * arg0, uint16_t * arg1, unsigned arg2 );
+
+/* prototype the benchmarking function so that we can build with -Wmissing-declarations */
+void starch_magnitude_s16_aligned_benchmark(void);
+
+static void starch_benchmark_one_magnitude_s16_aligned( starch_magnitude_s16_aligned_regentry * _entry, const int16_t * arg0, uint16_t * arg1, unsigned arg2 )
+{
+    fprintf(stderr, "  %-40s  ", _entry->name);
+
+    /* test for support */
+    if (_entry->flavor_supported && !(_entry->flavor_supported())) {
+        fprintf(stderr, "unsupported\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_whitelist && !starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_whitelist)) {
+        fprintf(stderr, "skipped (not whitelisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_blacklist && starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_blacklist)) {
+        fprintf(stderr, "skipped (blacklisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_list_only) {
+        fprintf(stderr, "supported\n");
+        return;
+    }
+
+    /* initial warmup */
+    for (unsigned _loop = 0; _loop < starch_benchmark_warmup_loops; ++_loop)
+        _entry->callable ( arg0, arg1, arg2 );
+
+    /* verify correctness of the output */
+    if (! starch_magnitude_s16_aligned_benchmark_verify ( arg0, arg1, arg2 )) {
+        fprintf(stderr, "skipped (verification failed)\n");
+        starch_benchmark_validation_failed = true;
+        return;
+    }
+    if (starch_benchmark_validate_only) {
+        fprintf(stderr, "validation ok\n");
+        return;
+    }
+
+    /* pre-benchmark, find a loop count that takes at least 100ms */
+    starch_benchmark_time _start, _end;
+    uint64_t _elapsed = 0;
+    uint64_t _loops = 127;
+    while (_elapsed < 100000000) {
+        _loops *= 2;
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2 );
+        starch_benchmark_get_time(&_end);
+        _elapsed = starch_benchmark_elapsed(&_start, &_end);
+    }
+
+    /* real benchmark, run for approx 1 second */
+    _loops = _loops * 1000000000 / _elapsed;
+
+    _elapsed = 0;
+    uint64_t _elapsed_min = UINT64_MAX;
+    uint64_t _elapsed_max = 0;
+    for (unsigned _iter = 0; _iter < starch_benchmark_iterations; ++_iter) {
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2 );
+        starch_benchmark_get_time(&_end);
+        uint64_t _elapsed_one = starch_benchmark_elapsed(&_start, &_end);
+        if (_elapsed_one < _elapsed_min)
+            _elapsed_min = _elapsed_one;
+        if (_elapsed_one > _elapsed_max)
+            _elapsed_max = _elapsed_one;
+        _elapsed += _elapsed_one;
+    }
+
+    uint64_t _per_loop;
+    if (starch_benchmark_iterations > 2)
+        _per_loop = (_elapsed - _elapsed_min - _elapsed_max) / _loops / (starch_benchmark_iterations - 2);
+    else
+        _per_loop = _elapsed / _loops / starch_benchmark_iterations;
+
+    fprintf(stderr, "%" PRIu64 " ns/call\n", _per_loop);
+
+    if (starch_benchmark_result_count >= starch_benchmark_result_size) {
+        if (!starch_benchmark_result_size)
+            starch_benchmark_result_size = 64;
+        else
+            starch_benchmark_result_size *= 2;
+        starch_benchmark_results = realloc(starch_benchmark_results, starch_benchmark_result_size * sizeof(*starch_benchmark_results));
+        if (!starch_benchmark_results) {
+            fprintf(stderr, "realloc: %s\n", strerror(errno));
+            exit(1);
+        }
+    }
+
+    starch_benchmark_results[starch_benchmark_result_count].name = "magnitude_s16_aligned";
+    starch_benchmark_results[starch_benchmark_result_count].impl = _entry->name;
+    starch_benchmark_results[starch_benchmark_result_count].ns = _per_loop;
+    ++starch_benchmark_result_count;
+}
+
+static void starch_benchmark_run_magnitude_s16_aligned( const int16_t * arg0, uint16_t * arg1, unsigned arg2 )
+{
+    for (starch_magnitude_s16_aligned_regentry *_entry = starch_magnitude_s16_aligned_registry; _entry->name; ++_entry) {
+        starch_benchmark_one_magnitude_s16_aligned( _entry, arg0, arg1, arg2 );
     }
 }
 
@@ -785,6 +1233,230 @@ static void starch_benchmark_run_magnitude_sc16q11_aligned( const sc16_t * arg0,
 }
 
 /* prototypes for benchmark helpers provided by user code */
+void starch_magnitude_u16o12_benchmark (void);
+bool starch_magnitude_u16o12_benchmark_verify ( const uint16_t * arg0, uint16_t * arg1, unsigned arg2 );
+
+/* prototype the benchmarking function so that we can build with -Wmissing-declarations */
+void starch_magnitude_u16o12_benchmark(void);
+
+static void starch_benchmark_one_magnitude_u16o12( starch_magnitude_u16o12_regentry * _entry, const uint16_t * arg0, uint16_t * arg1, unsigned arg2 )
+{
+    fprintf(stderr, "  %-40s  ", _entry->name);
+
+    /* test for support */
+    if (_entry->flavor_supported && !(_entry->flavor_supported())) {
+        fprintf(stderr, "unsupported\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_whitelist && !starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_whitelist)) {
+        fprintf(stderr, "skipped (not whitelisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_blacklist && starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_blacklist)) {
+        fprintf(stderr, "skipped (blacklisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_list_only) {
+        fprintf(stderr, "supported\n");
+        return;
+    }
+
+    /* initial warmup */
+    for (unsigned _loop = 0; _loop < starch_benchmark_warmup_loops; ++_loop)
+        _entry->callable ( arg0, arg1, arg2 );
+
+    /* verify correctness of the output */
+    if (! starch_magnitude_u16o12_benchmark_verify ( arg0, arg1, arg2 )) {
+        fprintf(stderr, "skipped (verification failed)\n");
+        starch_benchmark_validation_failed = true;
+        return;
+    }
+    if (starch_benchmark_validate_only) {
+        fprintf(stderr, "validation ok\n");
+        return;
+    }
+
+    /* pre-benchmark, find a loop count that takes at least 100ms */
+    starch_benchmark_time _start, _end;
+    uint64_t _elapsed = 0;
+    uint64_t _loops = 127;
+    while (_elapsed < 100000000) {
+        _loops *= 2;
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2 );
+        starch_benchmark_get_time(&_end);
+        _elapsed = starch_benchmark_elapsed(&_start, &_end);
+    }
+
+    /* real benchmark, run for approx 1 second */
+    _loops = _loops * 1000000000 / _elapsed;
+
+    _elapsed = 0;
+    uint64_t _elapsed_min = UINT64_MAX;
+    uint64_t _elapsed_max = 0;
+    for (unsigned _iter = 0; _iter < starch_benchmark_iterations; ++_iter) {
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2 );
+        starch_benchmark_get_time(&_end);
+        uint64_t _elapsed_one = starch_benchmark_elapsed(&_start, &_end);
+        if (_elapsed_one < _elapsed_min)
+            _elapsed_min = _elapsed_one;
+        if (_elapsed_one > _elapsed_max)
+            _elapsed_max = _elapsed_one;
+        _elapsed += _elapsed_one;
+    }
+
+    uint64_t _per_loop;
+    if (starch_benchmark_iterations > 2)
+        _per_loop = (_elapsed - _elapsed_min - _elapsed_max) / _loops / (starch_benchmark_iterations - 2);
+    else
+        _per_loop = _elapsed / _loops / starch_benchmark_iterations;
+
+    fprintf(stderr, "%" PRIu64 " ns/call\n", _per_loop);
+
+    if (starch_benchmark_result_count >= starch_benchmark_result_size) {
+        if (!starch_benchmark_result_size)
+            starch_benchmark_result_size = 64;
+        else
+            starch_benchmark_result_size *= 2;
+        starch_benchmark_results = realloc(starch_benchmark_results, starch_benchmark_result_size * sizeof(*starch_benchmark_results));
+        if (!starch_benchmark_results) {
+            fprintf(stderr, "realloc: %s\n", strerror(errno));
+            exit(1);
+        }
+    }
+
+    starch_benchmark_results[starch_benchmark_result_count].name = "magnitude_u16o12";
+    starch_benchmark_results[starch_benchmark_result_count].impl = _entry->name;
+    starch_benchmark_results[starch_benchmark_result_count].ns = _per_loop;
+    ++starch_benchmark_result_count;
+}
+
+static void starch_benchmark_run_magnitude_u16o12( const uint16_t * arg0, uint16_t * arg1, unsigned arg2 )
+{
+    for (starch_magnitude_u16o12_regentry *_entry = starch_magnitude_u16o12_registry; _entry->name; ++_entry) {
+        starch_benchmark_one_magnitude_u16o12( _entry, arg0, arg1, arg2 );
+    }
+}
+
+/* prototypes for benchmark helpers provided by user code */
+void starch_magnitude_u16o12_aligned_benchmark (void);
+bool starch_magnitude_u16o12_aligned_benchmark_verify ( const uint16_t * arg0, uint16_t * arg1, unsigned arg2 );
+
+/* prototype the benchmarking function so that we can build with -Wmissing-declarations */
+void starch_magnitude_u16o12_aligned_benchmark(void);
+
+static void starch_benchmark_one_magnitude_u16o12_aligned( starch_magnitude_u16o12_aligned_regentry * _entry, const uint16_t * arg0, uint16_t * arg1, unsigned arg2 )
+{
+    fprintf(stderr, "  %-40s  ", _entry->name);
+
+    /* test for support */
+    if (_entry->flavor_supported && !(_entry->flavor_supported())) {
+        fprintf(stderr, "unsupported\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_whitelist && !starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_whitelist)) {
+        fprintf(stderr, "skipped (not whitelisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_blacklist && starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_blacklist)) {
+        fprintf(stderr, "skipped (blacklisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_list_only) {
+        fprintf(stderr, "supported\n");
+        return;
+    }
+
+    /* initial warmup */
+    for (unsigned _loop = 0; _loop < starch_benchmark_warmup_loops; ++_loop)
+        _entry->callable ( arg0, arg1, arg2 );
+
+    /* verify correctness of the output */
+    if (! starch_magnitude_u16o12_aligned_benchmark_verify ( arg0, arg1, arg2 )) {
+        fprintf(stderr, "skipped (verification failed)\n");
+        starch_benchmark_validation_failed = true;
+        return;
+    }
+    if (starch_benchmark_validate_only) {
+        fprintf(stderr, "validation ok\n");
+        return;
+    }
+
+    /* pre-benchmark, find a loop count that takes at least 100ms */
+    starch_benchmark_time _start, _end;
+    uint64_t _elapsed = 0;
+    uint64_t _loops = 127;
+    while (_elapsed < 100000000) {
+        _loops *= 2;
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2 );
+        starch_benchmark_get_time(&_end);
+        _elapsed = starch_benchmark_elapsed(&_start, &_end);
+    }
+
+    /* real benchmark, run for approx 1 second */
+    _loops = _loops * 1000000000 / _elapsed;
+
+    _elapsed = 0;
+    uint64_t _elapsed_min = UINT64_MAX;
+    uint64_t _elapsed_max = 0;
+    for (unsigned _iter = 0; _iter < starch_benchmark_iterations; ++_iter) {
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2 );
+        starch_benchmark_get_time(&_end);
+        uint64_t _elapsed_one = starch_benchmark_elapsed(&_start, &_end);
+        if (_elapsed_one < _elapsed_min)
+            _elapsed_min = _elapsed_one;
+        if (_elapsed_one > _elapsed_max)
+            _elapsed_max = _elapsed_one;
+        _elapsed += _elapsed_one;
+    }
+
+    uint64_t _per_loop;
+    if (starch_benchmark_iterations > 2)
+        _per_loop = (_elapsed - _elapsed_min - _elapsed_max) / _loops / (starch_benchmark_iterations - 2);
+    else
+        _per_loop = _elapsed / _loops / starch_benchmark_iterations;
+
+    fprintf(stderr, "%" PRIu64 " ns/call\n", _per_loop);
+
+    if (starch_benchmark_result_count >= starch_benchmark_result_size) {
+        if (!starch_benchmark_result_size)
+            starch_benchmark_result_size = 64;
+        else
+            starch_benchmark_result_size *= 2;
+        starch_benchmark_results = realloc(starch_benchmark_results, starch_benchmark_result_size * sizeof(*starch_benchmark_results));
+        if (!starch_benchmark_results) {
+            fprintf(stderr, "realloc: %s\n", strerror(errno));
+            exit(1);
+        }
+    }
+
+    starch_benchmark_results[starch_benchmark_result_count].name = "magnitude_u16o12_aligned";
+    starch_benchmark_results[starch_benchmark_result_count].impl = _entry->name;
+    starch_benchmark_results[starch_benchmark_result_count].ns = _per_loop;
+    ++starch_benchmark_result_count;
+}
+
+static void starch_benchmark_run_magnitude_u16o12_aligned( const uint16_t * arg0, uint16_t * arg1, unsigned arg2 )
+{
+    for (starch_magnitude_u16o12_aligned_regentry *_entry = starch_magnitude_u16o12_aligned_registry; _entry->name; ++_entry) {
+        starch_benchmark_one_magnitude_u16o12_aligned( _entry, arg0, arg1, arg2 );
+    }
+}
+
+/* prototypes for benchmark helpers provided by user code */
 void starch_magnitude_uc8_benchmark (void);
 bool starch_magnitude_uc8_benchmark_verify ( const uc8_t * arg0, uint16_t * arg1, unsigned arg2 );
 
@@ -1232,6 +1904,230 @@ static void starch_benchmark_run_mean_power_u16_aligned( const uint16_t * arg0, 
     }
 }
 
+/* prototypes for benchmark helpers provided by user code */
+void starch_preamble_u16_benchmark (void);
+bool starch_preamble_u16_benchmark_verify ( const uint16_t * arg0, unsigned arg1, unsigned arg2, uint16_t * arg3 );
+
+/* prototype the benchmarking function so that we can build with -Wmissing-declarations */
+void starch_preamble_u16_benchmark(void);
+
+static void starch_benchmark_one_preamble_u16( starch_preamble_u16_regentry * _entry, const uint16_t * arg0, unsigned arg1, unsigned arg2, uint16_t * arg3 )
+{
+    fprintf(stderr, "  %-40s  ", _entry->name);
+
+    /* test for support */
+    if (_entry->flavor_supported && !(_entry->flavor_supported())) {
+        fprintf(stderr, "unsupported\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_whitelist && !starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_whitelist)) {
+        fprintf(stderr, "skipped (not whitelisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_blacklist && starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_blacklist)) {
+        fprintf(stderr, "skipped (blacklisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_list_only) {
+        fprintf(stderr, "supported\n");
+        return;
+    }
+
+    /* initial warmup */
+    for (unsigned _loop = 0; _loop < starch_benchmark_warmup_loops; ++_loop)
+        _entry->callable ( arg0, arg1, arg2, arg3 );
+
+    /* verify correctness of the output */
+    if (! starch_preamble_u16_benchmark_verify ( arg0, arg1, arg2, arg3 )) {
+        fprintf(stderr, "skipped (verification failed)\n");
+        starch_benchmark_validation_failed = true;
+        return;
+    }
+    if (starch_benchmark_validate_only) {
+        fprintf(stderr, "validation ok\n");
+        return;
+    }
+
+    /* pre-benchmark, find a loop count that takes at least 100ms */
+    starch_benchmark_time _start, _end;
+    uint64_t _elapsed = 0;
+    uint64_t _loops = 127;
+    while (_elapsed < 100000000) {
+        _loops *= 2;
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2, arg3 );
+        starch_benchmark_get_time(&_end);
+        _elapsed = starch_benchmark_elapsed(&_start, &_end);
+    }
+
+    /* real benchmark, run for approx 1 second */
+    _loops = _loops * 1000000000 / _elapsed;
+
+    _elapsed = 0;
+    uint64_t _elapsed_min = UINT64_MAX;
+    uint64_t _elapsed_max = 0;
+    for (unsigned _iter = 0; _iter < starch_benchmark_iterations; ++_iter) {
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2, arg3 );
+        starch_benchmark_get_time(&_end);
+        uint64_t _elapsed_one = starch_benchmark_elapsed(&_start, &_end);
+        if (_elapsed_one < _elapsed_min)
+            _elapsed_min = _elapsed_one;
+        if (_elapsed_one > _elapsed_max)
+            _elapsed_max = _elapsed_one;
+        _elapsed += _elapsed_one;
+    }
+
+    uint64_t _per_loop;
+    if (starch_benchmark_iterations > 2)
+        _per_loop = (_elapsed - _elapsed_min - _elapsed_max) / _loops / (starch_benchmark_iterations - 2);
+    else
+        _per_loop = _elapsed / _loops / starch_benchmark_iterations;
+
+    fprintf(stderr, "%" PRIu64 " ns/call\n", _per_loop);
+
+    if (starch_benchmark_result_count >= starch_benchmark_result_size) {
+        if (!starch_benchmark_result_size)
+            starch_benchmark_result_size = 64;
+        else
+            starch_benchmark_result_size *= 2;
+        starch_benchmark_results = realloc(starch_benchmark_results, starch_benchmark_result_size * sizeof(*starch_benchmark_results));
+        if (!starch_benchmark_results) {
+            fprintf(stderr, "realloc: %s\n", strerror(errno));
+            exit(1);
+        }
+    }
+
+    starch_benchmark_results[starch_benchmark_result_count].name = "preamble_u16";
+    starch_benchmark_results[starch_benchmark_result_count].impl = _entry->name;
+    starch_benchmark_results[starch_benchmark_result_count].ns = _per_loop;
+    ++starch_benchmark_result_count;
+}
+
+static void starch_benchmark_run_preamble_u16( const uint16_t * arg0, unsigned arg1, unsigned arg2, uint16_t * arg3 )
+{
+    for (starch_preamble_u16_regentry *_entry = starch_preamble_u16_registry; _entry->name; ++_entry) {
+        starch_benchmark_one_preamble_u16( _entry, arg0, arg1, arg2, arg3 );
+    }
+}
+
+/* prototypes for benchmark helpers provided by user code */
+void starch_preamble_u16_aligned_benchmark (void);
+bool starch_preamble_u16_aligned_benchmark_verify ( const uint16_t * arg0, unsigned arg1, unsigned arg2, uint16_t * arg3 );
+
+/* prototype the benchmarking function so that we can build with -Wmissing-declarations */
+void starch_preamble_u16_aligned_benchmark(void);
+
+static void starch_benchmark_one_preamble_u16_aligned( starch_preamble_u16_aligned_regentry * _entry, const uint16_t * arg0, unsigned arg1, unsigned arg2, uint16_t * arg3 )
+{
+    fprintf(stderr, "  %-40s  ", _entry->name);
+
+    /* test for support */
+    if (_entry->flavor_supported && !(_entry->flavor_supported())) {
+        fprintf(stderr, "unsupported\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_whitelist && !starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_whitelist)) {
+        fprintf(stderr, "skipped (not whitelisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_flavor_blacklist && starch_benchmark_flavor_in_list(_entry->flavor, starch_benchmark_flavor_blacklist)) {
+        fprintf(stderr, "skipped (blacklisted)\n");
+        return;
+    }
+
+    if (starch_benchmark_list_only) {
+        fprintf(stderr, "supported\n");
+        return;
+    }
+
+    /* initial warmup */
+    for (unsigned _loop = 0; _loop < starch_benchmark_warmup_loops; ++_loop)
+        _entry->callable ( arg0, arg1, arg2, arg3 );
+
+    /* verify correctness of the output */
+    if (! starch_preamble_u16_aligned_benchmark_verify ( arg0, arg1, arg2, arg3 )) {
+        fprintf(stderr, "skipped (verification failed)\n");
+        starch_benchmark_validation_failed = true;
+        return;
+    }
+    if (starch_benchmark_validate_only) {
+        fprintf(stderr, "validation ok\n");
+        return;
+    }
+
+    /* pre-benchmark, find a loop count that takes at least 100ms */
+    starch_benchmark_time _start, _end;
+    uint64_t _elapsed = 0;
+    uint64_t _loops = 127;
+    while (_elapsed < 100000000) {
+        _loops *= 2;
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2, arg3 );
+        starch_benchmark_get_time(&_end);
+        _elapsed = starch_benchmark_elapsed(&_start, &_end);
+    }
+
+    /* real benchmark, run for approx 1 second */
+    _loops = _loops * 1000000000 / _elapsed;
+
+    _elapsed = 0;
+    uint64_t _elapsed_min = UINT64_MAX;
+    uint64_t _elapsed_max = 0;
+    for (unsigned _iter = 0; _iter < starch_benchmark_iterations; ++_iter) {
+        starch_benchmark_get_time(&_start);
+        for (uint64_t _loop = 0; _loop < _loops; ++_loop)
+            _entry->callable ( arg0, arg1, arg2, arg3 );
+        starch_benchmark_get_time(&_end);
+        uint64_t _elapsed_one = starch_benchmark_elapsed(&_start, &_end);
+        if (_elapsed_one < _elapsed_min)
+            _elapsed_min = _elapsed_one;
+        if (_elapsed_one > _elapsed_max)
+            _elapsed_max = _elapsed_one;
+        _elapsed += _elapsed_one;
+    }
+
+    uint64_t _per_loop;
+    if (starch_benchmark_iterations > 2)
+        _per_loop = (_elapsed - _elapsed_min - _elapsed_max) / _loops / (starch_benchmark_iterations - 2);
+    else
+        _per_loop = _elapsed / _loops / starch_benchmark_iterations;
+
+    fprintf(stderr, "%" PRIu64 " ns/call\n", _per_loop);
+
+    if (starch_benchmark_result_count >= starch_benchmark_result_size) {
+        if (!starch_benchmark_result_size)
+            starch_benchmark_result_size = 64;
+        else
+            starch_benchmark_result_size *= 2;
+        starch_benchmark_results = realloc(starch_benchmark_results, starch_benchmark_result_size * sizeof(*starch_benchmark_results));
+        if (!starch_benchmark_results) {
+            fprintf(stderr, "realloc: %s\n", strerror(errno));
+            exit(1);
+        }
+    }
+
+    starch_benchmark_results[starch_benchmark_result_count].name = "preamble_u16_aligned";
+    starch_benchmark_results[starch_benchmark_result_count].impl = _entry->name;
+    starch_benchmark_results[starch_benchmark_result_count].ns = _per_loop;
+    ++starch_benchmark_result_count;
+}
+
+static void starch_benchmark_run_preamble_u16_aligned( const uint16_t * arg0, unsigned arg1, unsigned arg2, uint16_t * arg3 )
+{
+    for (starch_preamble_u16_aligned_regentry *_entry = starch_preamble_u16_aligned_registry; _entry->name; ++_entry) {
+        starch_benchmark_one_preamble_u16_aligned( _entry, arg0, arg1, arg2, arg3 );
+    }
+}
+
 
 #undef STARCH_ALIGNMENT
 
@@ -1246,11 +2142,15 @@ static void starch_benchmark_run_mean_power_u16_aligned( const uint16_t * arg0, 
 #define STARCH_BENCHMARK_ALLOC(_count, _type) ((_type *) starch_benchmark_aligned_alloc(1, alignof(_type), (_count) * sizeof(_type)))
 #define STARCH_BENCHMARK_FREE(_ptr) starch_benchmark_aligned_free(_ptr)
 
+#include "../benchmark/boxcar_u16_benchmark.c"
 #include "../benchmark/magnitude_power_uc8_benchmark.c"
+#include "../benchmark/magnitude_s16_benchmark.c"
 #include "../benchmark/magnitude_sc16_benchmark.c"
 #include "../benchmark/magnitude_sc16q11_benchmark.c"
+#include "../benchmark/magnitude_u16o12_benchmark.c"
 #include "../benchmark/magnitude_uc8_benchmark.c"
 #include "../benchmark/mean_power_u16_benchmark.c"
+#include "../benchmark/preamble_u16_benchmark.c"
 
 #undef STARCH_ALIGNMENT
 #undef STARCH_ALIGNED
@@ -1274,12 +2174,26 @@ static void starch_benchmark_run_mean_power_u16_aligned( const uint16_t * arg0, 
 #define STARCH_BENCHMARK_ALLOC(_count, _type) ((_type *) starch_benchmark_aligned_alloc(STARCH_MIX_ALIGNMENT, alignof(_type), (_count) * sizeof(_type)))
 #define STARCH_BENCHMARK_FREE(_ptr) starch_benchmark_aligned_free(_ptr)
 
+#include "../benchmark/boxcar_u16_benchmark.c"
 #include "../benchmark/magnitude_power_uc8_benchmark.c"
+#include "../benchmark/magnitude_s16_benchmark.c"
 #include "../benchmark/magnitude_sc16_benchmark.c"
 #include "../benchmark/magnitude_sc16q11_benchmark.c"
+#include "../benchmark/magnitude_u16o12_benchmark.c"
 #include "../benchmark/magnitude_uc8_benchmark.c"
 #include "../benchmark/mean_power_u16_benchmark.c"
+#include "../benchmark/preamble_u16_benchmark.c"
 
+static void starch_benchmark_all_boxcar_u16(void)
+{
+    fprintf(stderr, "==== boxcar_u16 ===\n");
+    starch_boxcar_u16_benchmark ();
+}
+static void starch_benchmark_all_boxcar_u16_aligned(void)
+{
+    fprintf(stderr, "==== boxcar_u16_aligned ===\n");
+    starch_boxcar_u16_aligned_benchmark ();
+}
 static void starch_benchmark_all_magnitude_power_uc8(void)
 {
     fprintf(stderr, "==== magnitude_power_uc8 ===\n");
@@ -1289,6 +2203,16 @@ static void starch_benchmark_all_magnitude_power_uc8_aligned(void)
 {
     fprintf(stderr, "==== magnitude_power_uc8_aligned ===\n");
     starch_magnitude_power_uc8_aligned_benchmark ();
+}
+static void starch_benchmark_all_magnitude_s16(void)
+{
+    fprintf(stderr, "==== magnitude_s16 ===\n");
+    starch_magnitude_s16_benchmark ();
+}
+static void starch_benchmark_all_magnitude_s16_aligned(void)
+{
+    fprintf(stderr, "==== magnitude_s16_aligned ===\n");
+    starch_magnitude_s16_aligned_benchmark ();
 }
 static void starch_benchmark_all_magnitude_sc16(void)
 {
@@ -1310,6 +2234,16 @@ static void starch_benchmark_all_magnitude_sc16q11_aligned(void)
     fprintf(stderr, "==== magnitude_sc16q11_aligned ===\n");
     starch_magnitude_sc16q11_aligned_benchmark ();
 }
+static void starch_benchmark_all_magnitude_u16o12(void)
+{
+    fprintf(stderr, "==== magnitude_u16o12 ===\n");
+    starch_magnitude_u16o12_benchmark ();
+}
+static void starch_benchmark_all_magnitude_u16o12_aligned(void)
+{
+    fprintf(stderr, "==== magnitude_u16o12_aligned ===\n");
+    starch_magnitude_u16o12_aligned_benchmark ();
+}
 static void starch_benchmark_all_magnitude_uc8(void)
 {
     fprintf(stderr, "==== magnitude_uc8 ===\n");
@@ -1329,6 +2263,16 @@ static void starch_benchmark_all_mean_power_u16_aligned(void)
 {
     fprintf(stderr, "==== mean_power_u16_aligned ===\n");
     starch_mean_power_u16_aligned_benchmark ();
+}
+static void starch_benchmark_all_preamble_u16(void)
+{
+    fprintf(stderr, "==== preamble_u16 ===\n");
+    starch_preamble_u16_benchmark ();
+}
+static void starch_benchmark_all_preamble_u16_aligned(void)
+{
+    fprintf(stderr, "==== preamble_u16_aligned ===\n");
+    starch_preamble_u16_aligned_benchmark ();
 }
 
 static int starch_benchmark_compare_result(const void *a, const void *b)
@@ -1383,16 +2327,24 @@ static void starch_benchmark_usage(const char *argv0)
 #endif
           "\n"
         "Supported functions: "
+          "boxcar_u16 "
+          "boxcar_u16_aligned "
           "magnitude_power_uc8 "
           "magnitude_power_uc8_aligned "
+          "magnitude_s16 "
+          "magnitude_s16_aligned "
           "magnitude_sc16 "
           "magnitude_sc16_aligned "
           "magnitude_sc16q11 "
           "magnitude_sc16q11_aligned "
+          "magnitude_u16o12 "
+          "magnitude_u16o12_aligned "
           "magnitude_uc8 "
           "magnitude_uc8_aligned "
           "mean_power_u16 "
           "mean_power_u16_aligned "
+          "preamble_u16 "
+          "preamble_u16_aligned "
           "\n", argv0);
 }
 
@@ -1478,6 +2430,16 @@ int main(int argc, char **argv)
     }
 
     for (int i = optind; i < argc; ++i) {
+        if (!strcmp(argv[i], "boxcar_u16")) {
+            specific = 1;
+            starch_benchmark_all_boxcar_u16();
+            continue;
+        }
+        if (!strcmp(argv[i], "boxcar_u16_aligned")) {
+            specific = 1;
+            starch_benchmark_all_boxcar_u16_aligned();
+            continue;
+        }
         if (!strcmp(argv[i], "magnitude_power_uc8")) {
             specific = 1;
             starch_benchmark_all_magnitude_power_uc8();
@@ -1486,6 +2448,16 @@ int main(int argc, char **argv)
         if (!strcmp(argv[i], "magnitude_power_uc8_aligned")) {
             specific = 1;
             starch_benchmark_all_magnitude_power_uc8_aligned();
+            continue;
+        }
+        if (!strcmp(argv[i], "magnitude_s16")) {
+            specific = 1;
+            starch_benchmark_all_magnitude_s16();
+            continue;
+        }
+        if (!strcmp(argv[i], "magnitude_s16_aligned")) {
+            specific = 1;
+            starch_benchmark_all_magnitude_s16_aligned();
             continue;
         }
         if (!strcmp(argv[i], "magnitude_sc16")) {
@@ -1508,6 +2480,16 @@ int main(int argc, char **argv)
             starch_benchmark_all_magnitude_sc16q11_aligned();
             continue;
         }
+        if (!strcmp(argv[i], "magnitude_u16o12")) {
+            specific = 1;
+            starch_benchmark_all_magnitude_u16o12();
+            continue;
+        }
+        if (!strcmp(argv[i], "magnitude_u16o12_aligned")) {
+            specific = 1;
+            starch_benchmark_all_magnitude_u16o12_aligned();
+            continue;
+        }
         if (!strcmp(argv[i], "magnitude_uc8")) {
             specific = 1;
             starch_benchmark_all_magnitude_uc8();
@@ -1528,22 +2510,40 @@ int main(int argc, char **argv)
             starch_benchmark_all_mean_power_u16_aligned();
             continue;
         }
+        if (!strcmp(argv[i], "preamble_u16")) {
+            specific = 1;
+            starch_benchmark_all_preamble_u16();
+            continue;
+        }
+        if (!strcmp(argv[i], "preamble_u16_aligned")) {
+            specific = 1;
+            starch_benchmark_all_preamble_u16_aligned();
+            continue;
+        }
 
         fprintf(stderr, "%s: unrecognized function name: %s\n", argv[0], argv[i]);
         return 2;
     }
 
     if (!specific) {
+        starch_benchmark_all_boxcar_u16();
+        starch_benchmark_all_boxcar_u16_aligned();
         starch_benchmark_all_magnitude_power_uc8();
         starch_benchmark_all_magnitude_power_uc8_aligned();
+        starch_benchmark_all_magnitude_s16();
+        starch_benchmark_all_magnitude_s16_aligned();
         starch_benchmark_all_magnitude_sc16();
         starch_benchmark_all_magnitude_sc16_aligned();
         starch_benchmark_all_magnitude_sc16q11();
         starch_benchmark_all_magnitude_sc16q11_aligned();
+        starch_benchmark_all_magnitude_u16o12();
+        starch_benchmark_all_magnitude_u16o12_aligned();
         starch_benchmark_all_magnitude_uc8();
         starch_benchmark_all_magnitude_uc8_aligned();
         starch_benchmark_all_mean_power_u16();
         starch_benchmark_all_mean_power_u16_aligned();
+        starch_benchmark_all_preamble_u16();
+        starch_benchmark_all_preamble_u16_aligned();
     }
 
     if (output_path) {

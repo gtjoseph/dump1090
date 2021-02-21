@@ -30,6 +30,9 @@ bool sdrOpen();
 void sdrRun();
 void sdrStop();
 void sdrClose();
+input_format_t sdrGetDefaultSampleFormat();
+double sdrGetDefaultSampleRate();
+demodulator_type_t sdrGetDefaultDemodulatorType();
 
 // Gain control
 int sdrGetGain();              // return current gain step 0..N, or -1 if gain control is not supported

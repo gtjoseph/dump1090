@@ -32,5 +32,8 @@ int rtlsdrGetGain();
 int rtlsdrGetMaxGain();
 double rtlsdrGetGainDb(int step);
 int rtlsdrSetGain(int step);
+input_format_t rtlsdrGetDefaultSampleFormat();
+double rtlsdrGetDefaultSampleRate();
+demodulator_type_t rtlsdrGetDefaultDemodulatorType();
 
 #endif

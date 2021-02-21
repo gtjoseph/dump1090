@@ -265,7 +265,7 @@ typedef enum {
 #include "anet.h"
 #include "net_io.h"
 #include "crc.h"
-#include "demod_2400.h"
+#include "demod.h"
 #include "stats.h"
 #include "cpr.h"
 #include "icao_filter.h"
@@ -277,7 +277,7 @@ typedef enum {
 //======================== structure declarations =========================
 
 typedef enum {
-    SDR_NONE, SDR_IFILE, SDR_RTLSDR, SDR_BLADERF, SDR_HACKRF, SDR_LIMESDR
+    SDR_NONE, SDR_IFILE, SDR_RTLSDR, SDR_BLADERF, SDR_HACKRF, SDR_LIMESDR, SDR_AIRSPY
 } sdr_type_t;
 
 // Program global state
@@ -290,6 +290,7 @@ struct _Modes {                             // Internal state
 
     unsigned        trailing_samples;                     // extra trailing samples in magnitude buffers
     double          sample_rate;                          // actual sample rate in use (in hz)
+    input_format_t  sample_format;                        // sample format
 
     uint16_t       *log10lut;        // Magnitude -> log10 lookup table
     atomic_int      exit;            // Exit from the main loop when true (2 = unclean exit)
@@ -427,6 +428,7 @@ struct modesMessage {
     uint64_t      sysTimestampMsg;                // Timestamp of the message (system time)
     int           remote;                         // If set this message is from a remote station
     double        signalLevel;                    // RSSI, in the range [0..1], as a fraction of full-scale power
+    double        noiseLevel;                     // Noise, in the range [0..1], as a fraction of full-scale power
     int           score;                          // Scoring from scoreModesMessage, if used
     int           reliable;                       // is this a "reliable" message (uncorrected DF11/DF17/DF18)?
 

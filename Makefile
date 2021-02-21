@@ -31,12 +31,17 @@ ifeq ($(PKGCONFIG), yes)
   ifndef LIMESDR
     LIMESDR := $(shell pkg-config --exists LimeSuite && echo "yes" || echo "no")
   endif
+
+  ifndef AIRSPY
+    AIRSPY := $(shell pkg-config --exists libairspy && echo "yes" || echo "no")
+  endif
 else
   # pkg-config not available. Only use explicitly enabled libraries.
   RTLSDR ?= no
   BLADERF ?= no
   HACKRF ?= no
   LIMESDR ?= no
+  AIRSPY ?= no
 endif
 
 UNAME := $(shell uname)
@@ -142,6 +147,12 @@ ifeq ($(LIMESDR), yes)
   LIBS_SDR += $(shell pkg-config --libs LimeSuite)
 endif
 
+ifeq ($(AIRSPY), yes)
+  SDR_OBJ += sdr_airspy.o
+  CPPFLAGS += -DENABLE_AIRSPY
+  DUMP1090_CFLAGS += $(shell pkg-config --cflags libairspy)
+  LIBS_SDR += $(shell pkg-config --libs libairspy)
+endif
 
 ##
 ## starch (runtime DSP code selection) mix, architecture-specific
@@ -182,11 +193,14 @@ showconfig:
 	@echo "  BladeRF support: $(BLADERF)" >&2
 	@echo "  HackRF support:  $(HACKRF)" >&2
 	@echo "  LimeSDR support: $(LIMESDR)" >&2
+	@echo "  AirSpy support:  $(AIRSPY)" >&2
 
 %.o: %.c *.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(APPEND_CFLAGS) -c $< -o $@
+	
+demod_multi.o: demod_multi.inc	
 
-dump1090: dump1090.o anet.o interactive.o mode_ac.o mode_s.o comm_b.o net_io.o crc.o demod_2400.o stats.o cpr.o icao_filter.o track.o util.o convert.o ais_charset.o adaptive.o $(SDR_OBJ) $(COMPAT) $(CPUFEATURES_OBJS) $(STARCH_OBJS)
+dump1090: dump1090.o anet.o interactive.o mode_ac.o mode_s.o comm_b.o net_io.o crc.o demod.o demod_2400.o demod_hirate.o demod_multi.o stats.o cpr.o icao_filter.o track.o util.o convert.o ais_charset.o adaptive.o $(SDR_OBJ) $(COMPAT) $(CPUFEATURES_OBJS) $(STARCH_OBJS)
 	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS) $(LIBS_SDR) $(LIBS_CURSES)
 
 view1090: view1090.o anet.o interactive.o mode_ac.o mode_s.o comm_b.o net_io.o crc.o stats.o cpr.o icao_filter.o track.o util.o ais_charset.o sdr_stub.o $(COMPAT)
@@ -230,5 +244,6 @@ starchgen:
 
 .PHONY: wisdom.local
 wisdom.local: starch-benchmark
-	./starch-benchmark -i 5 -o wisdom.local mean_power_u16 mean_power_u16_aligned magnitude_uc8 magnitude_uc8_aligned
-	./starch-benchmark -i 5 -r wisdom.local -o wisdom.local
+	./starch-benchmark -i 15 -o wisdom.local mean_power_u16 mean_power_u16_aligned magnitude_uc8 magnitude_uc8_aligned \
+		magnitude_sc16 magnitude_sc16_aligned magnitude_u16o12 magnitude_u16o12_aligned
+	./starch-benchmark -i 15 -r wisdom.local -o wisdom.local

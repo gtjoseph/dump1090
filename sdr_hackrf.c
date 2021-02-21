@@ -308,3 +308,18 @@ void hackRFClose()
         HackRF.device = NULL;
     }
 }
+
+input_format_t hackRFGetDefaultSampleFormat()
+{
+    return INPUT_UC8;
+}
+
+double hackRFGetDefaultSampleRate()
+{
+    return 2400000.0f;
+}
+
+demodulator_type_t hackRFGetDefaultDemodulatorType()
+{
+    return DEMOD_2400;
+}

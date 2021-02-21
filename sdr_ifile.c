@@ -67,7 +67,6 @@ static struct {
 void ifileInitConfig(void)
 {
     ifile.filename = NULL;
-    ifile.input_format = INPUT_UC8;
     ifile.throttle = false;
     ifile.fd = -1;
     ifile.bytes_per_sample = 0;
@@ -82,7 +81,6 @@ void ifileShowHelp()
     printf("      ifile-specific options (use with --ifile)\n");
     printf("\n");
     printf("--ifile <path>           read samples from given file ('-' for stdin)\n");
-    printf("--iformat <type>         set sample format (UC8, SC16, SC16Q11)\n");
     printf("--throttle               process samples at the original capture speed\n");
     printf("\n");
 }
@@ -96,21 +94,15 @@ bool ifileHandleOption(int argc, char **argv, int *jptr)
         // implies --device-type ifile
         ifile.filename = strdup(argv[++j]);
         Modes.sdr_type = SDR_IFILE;
-    } else if (!strcmp(argv[j],"--iformat") && more) {
-        ++j;
-        if (!strcasecmp(argv[j], "uc8")) {
-            ifile.input_format = INPUT_UC8;
-        } else if (!strcasecmp(argv[j], "sc16")) {
-            ifile.input_format = INPUT_SC16;
-        } else if (!strcasecmp(argv[j], "sc16q11")) {
-            ifile.input_format = INPUT_SC16Q11;
-        } else {
-            fprintf(stderr, "Input format '%s' not understood (supported values: UC8, SC16, SC16Q11)\n",
-                    argv[j]);
-            return false;
-        }
     } else if (!strcmp(argv[j],"--throttle")) {
         ifile.throttle = true;
+    } else if (!strcmp(argv[j],"--iformat") && more) {
+        Modes.sample_format = formatGetByName(argv[++j]);
+        if (Modes.sample_format == INPUT_NONE) {
+            fprintf(stderr, "warning: --sample-format '%s' is unknown.  Will use default for device-type.\n",
+                    argv[j]);
+        }
+        fprintf(stderr, "warning: Option --iformat has been deprecated in favor of --sample-format\n");
     } else {
         return false;
     }
@@ -140,20 +132,7 @@ bool ifileOpen(void)
         return false;
     }
 
-    switch (ifile.input_format) {
-    case INPUT_UC8:
-        ifile.bytes_per_sample = 2;
-        break;
-    case INPUT_SC16:
-    case INPUT_SC16Q11:
-        ifile.bytes_per_sample = 4;
-        break;
-    default:
-        fprintf(stderr, "ifile: unhandled input format\n");
-        ifileClose();
-        return false;
-    }
-
+    ifile.bytes_per_sample = formatGetBytesPerSample(Modes.sample_format);
     ifile.bufsize = ifile.bytes_per_sample * MODES_MAG_BUF_SAMPLES; /* ~1M samples, about half a second's worth */
 
     if (!(ifile.readbuf = malloc(ifile.bufsize))) {
@@ -162,7 +141,7 @@ bool ifileOpen(void)
         return false;
     }
 
-    ifile.converter = init_converter(ifile.input_format,
+    ifile.converter = init_converter(Modes.sample_format,
                                      Modes.sample_rate,
                                      Modes.dc_filter,
                                      &ifile.converter_state);
@@ -242,6 +221,7 @@ void ifileRun()
 
     // Wait for the FIFO to drain so we don't throw away trailing data
     fifo_drain();
+    Modes.exit = 1;
 }
 
 void ifileClose()
@@ -261,4 +241,19 @@ void ifileClose()
         close(ifile.fd);
         ifile.fd = -1;
     }
+}
+
+double ifileGetDefaultSampleRate()
+{
+    return 2400000.0f;
+}
+
+input_format_t ifileGetDefaultSampleFormat()
+{
+    return INPUT_UC8;
+}
+
+demodulator_type_t ifileGetDefaultDemodulatorType()
+{
+    return DEMOD_2400;
 }

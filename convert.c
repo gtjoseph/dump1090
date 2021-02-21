@@ -139,6 +139,22 @@ static void convert_u16o12(void *iq_data,
     }
 }
 
+static struct {
+    input_format_t format;
+    iq_convert_fn fn;
+    const char *description;
+    const int bytes_per_sample;
+    const char *name;
+} converters_table[] = {
+    // In order of preference
+    { INPUT_UC8,      convert_uc8,     "Signed complex 8-bit",  2, "uc8" },
+    { INPUT_SC16,     convert_sc16,    "Signed complex 16-bit", 4, "sc16" },
+    { INPUT_SC16Q11,  convert_sc16q11, "Signed complex 16-bit Q11 format", 4, "sc16q11" },
+    { INPUT_S16,      convert_s16,     "Signed real 16-bit", 2, "s16" },
+    { INPUT_U16O12,   convert_u16o12,  "Unsigned real 16-bit offset 12 format", 2, "u16o12" },
+    { INPUT_NONE,     NULL, NULL, 0, NULL }
+};
+
 iq_convert_fn init_converter(input_format_t format,
                              double sample_rate,
                              int filter_dc,
@@ -152,21 +168,46 @@ iq_convert_fn init_converter(input_format_t format,
         return NULL;
     }
 
-    switch (format) {
-    case INPUT_UC8:
-        return convert_uc8;
-    case INPUT_SC16:
-        return convert_sc16;
-    case INPUT_SC16Q11:
-        return convert_sc16q11;
-    case INPUT_S16:
-        return convert_s16;
-    case INPUT_U16O12:
-        return convert_u16o12;
-    default:
-        fprintf(stderr, "no suitable converter for format=%d\n", format);
-        return NULL;
+    if (format < INPUT_NONE) {
+        return converters_table[format].fn;
     }
+
+    fprintf(stderr, "no suitable converter for format=%d\n", format);
+    return NULL;
+}
+
+const char *formatGetName(input_format_t format_type)
+{
+    if (format_type < INPUT_NONE) {
+        return converters_table[format_type].name;
+    }
+    return NULL;
+}
+
+const char *formatGetDescription(input_format_t format_type)
+{
+    if (format_type < INPUT_NONE) {
+        return converters_table[format_type].description;
+    }
+    return NULL;
+}
+
+int formatGetBytesPerSample(input_format_t format_type)
+{
+    if (format_type < INPUT_NONE) {
+        return converters_table[format_type].bytes_per_sample;
+    }
+    return 0;
+}
+
+input_format_t formatGetByName(const char *name)
+{
+    for (int i = 0; i < INPUT_NONE; i++) {
+        if (strcasecmp(name, converters_table[i].name) == 0) {
+            return converters_table[i].format;
+        }
+    }
+    return INPUT_NONE;
 }
 
 void cleanup_converter(struct converter_state *state)

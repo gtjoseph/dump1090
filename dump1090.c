@@ -112,6 +112,8 @@ static void modesInitConfig(void) {
     // Now initialise things that should not be 0/NULL to their defaults
     Modes.gain                    = MODES_MAX_GAIN;
     Modes.freq                    = MODES_DEFAULT_FREQ;
+    Modes.sample_rate             = 0.0f;
+    Modes.sample_format           = INPUT_NONE;
     Modes.check_crc               = 1;
     Modes.fix_df                  = 1;
     Modes.net_heartbeat_interval  = MODES_NET_HEARTBEAT_INTERVAL;
@@ -148,7 +150,17 @@ static void modesInitConfig(void) {
 static void modesInit(void) {
     int i;
 
-    Modes.sample_rate = 2400000.0;
+    if (Modes.sample_rate == 0.0f) {
+        Modes.sample_rate = sdrGetDefaultSampleRate();
+    }
+
+    if (Modes.sample_format == INPUT_NONE) {
+        Modes.sample_format = sdrGetDefaultSampleFormat();
+    }
+
+    if (demodInit() != 0) {
+        exit(1);
+    }
 
     // Allocate the various buffers used by Modes
     Modes.trailing_samples = (MODES_PREAMBLE_US + MODES_LONG_MSG_BITS + 16) * 1e-6 * Modes.sample_rate;
@@ -313,9 +325,13 @@ static void showDSP()
 
 static void showHelp(void)
 {
+    int i;
+
     showVersion();
 
     sdrShowHelp();
+
+    demodShowHelp();
 
     printf(
 "      Output modes\n"
@@ -374,6 +390,24 @@ static void showHelp(void)
 // ------ 80 char limit ----------------------------------------------------------|
 "      Network connections\n"
 "\n"
+"--sample-rate <Hz or MHz>     Set sample rate (default: 2.4 MHz)\n"
+"--sample-format <format>      Set sample format.  One of:\n");
+
+    for (i = 0; i < INPUT_NONE; i++) {
+printf(
+"                         %s: %s %s\n", formatGetName(i), formatGetDescription(i), i ? "" : "(default)"
+);
+    }
+
+    printf(
+"                         Currently, only the ifile sdr supports different formats\n"
+"--interactive            Interactive mode refreshing data on screen. Implies --throttle\n"
+"--interactive-ttl <sec>  Remove from list if idle for <sec> (default: 60)\n"
+"--interactive-show-distance   Show aircraft distance and bearing instead of lat/lon\n"
+"                              (requires --lat and --lon)\n"
+"--interactive-distance-units  Distance units ('km', 'sm', 'nm') (default: 'nm')\n"
+"--interactive-callsign-filter Only callsigns that match the prefix or regex will be displayed\n"
+"--raw                    Show only messages hex values\n"
 "--net                    Enable networking with default ports unless overridden\n"
 "--no-modeac-auto         Don't enable Mode A/C if requested by a net connection\n"
 "--net-only               Enable just networking, no RTL device or file used\n"
@@ -598,6 +632,18 @@ int main(int argc, char **argv) {
             Modes.dev_name = strdup(argv[++j]);
         } else if (!strcmp(argv[j],"--gain") && more) {
             Modes.gain = atof(argv[++j]);
+//            Modes.gain = (int) (atof(argv[++j])*10); // Gain is in tens of DBs
+        } else if (!strcmp(argv[j], "--sample-rate") && more) {
+            Modes.sample_rate = atof(argv[++j]);
+            if (Modes.sample_rate < 1e6) {
+                Modes.sample_rate *= 1e6;
+            }
+        } else if (!strcmp(argv[j],"--sample-format") && more) {
+            Modes.sample_format = formatGetByName(argv[++j]);
+            if (Modes.sample_format == INPUT_NONE) {
+                fprintf(stderr, "warning: --sample-format '%s' is unknown.  Will use default for device-type.\n",
+                        argv[j]);
+            }
         } else if (!strcmp(argv[j],"--dcfilter")) {
 #if 0
             Modes.dc_filter = 1;
@@ -789,6 +835,8 @@ int main(int argc, char **argv) {
             Modes.adaptive_range_rescan_delay = atoi(argv[++j]);
         } else if (sdrHandleOption(argc, argv, &j)) {
             /* handled */
+        } else if (demodHandleOption(argc, argv, &j)) {
+            /* handled */
         } else {
             fprintf(stderr,
                     "Unknown or not enough arguments for option '%s'.\nTry %s --help for full option help.\n",
@@ -871,17 +919,7 @@ int main(int argc, char **argv) {
                 // Process one buffer
 
                 start_cpu_timing(&start_time);
-                demodulate2400(buf);
-                if (Modes.mode_ac) {
-                    demodulate2400AC(buf);
-                }
-
-                Modes.stats_current.samples_processed += buf->validLength - buf->overlap;
-                Modes.stats_current.samples_dropped += buf->dropped;
-                end_cpu_timing(&start_time, &Modes.stats_current.demod_cpu);
-
-                // Return the buffer to the FIFO freelist for reuse
-                fifo_release(buf);
+                demodDemod(buf);
 
                 // We got something so reset the watchdog
                 watchdogCounter = 300;
@@ -920,6 +958,7 @@ int main(int argc, char **argv) {
 
     sdrClose();
     fifo_destroy();
+    demodFree();
 
     if (Modes.exit == 1) {
         log_with_timestamp("Normal exit.");

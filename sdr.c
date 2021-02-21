@@ -33,6 +33,9 @@
 #ifdef ENABLE_LIMESDR
 #  include "sdr_limesdr.h"
 #endif
+#ifdef ENABLE_AIRSPY
+#  include "sdr_airspy.h"
+#endif
 
 typedef struct {
     const char *name;
@@ -48,6 +51,9 @@ typedef struct {
     int (*getmaxgain)();
     double (*getgaindb)(int);
     int (*setgain)(int);
+    input_format_t (*getDefaultSampleFormat)();
+    double (*getDefaultSampleRate)();
+    demodulator_type_t(*getDefaultDemodulatorType)();
 } sdr_handler;
 
 static void noInitConfig()
@@ -107,6 +113,21 @@ static int noSetGain(int step)
     return 0;
 }
 
+static input_format_t noSampleFormat()
+{
+    return INPUT_UC8;
+}
+
+static double noSampleRate()
+{
+    return 2400000.0f;
+}
+
+static demodulator_type_t noDemodulatorType()
+{
+    return DEMOD_2400;
+}
+
 static bool unsupportedOpen()
 {
     fprintf(stderr, "Support for this SDR type was not enabled in this build.\n");
@@ -115,24 +136,27 @@ static bool unsupportedOpen()
 
 static sdr_handler sdr_handlers[] = {
 #ifdef ENABLE_RTLSDR
-    { "rtlsdr", SDR_RTLSDR, rtlsdrInitConfig, rtlsdrShowHelp, rtlsdrHandleOption, rtlsdrOpen, rtlsdrRun, rtlsdrStop, rtlsdrClose, rtlsdrGetGain, rtlsdrGetMaxGain, rtlsdrGetGainDb, rtlsdrSetGain },
+    { "rtlsdr", SDR_RTLSDR, rtlsdrInitConfig, rtlsdrShowHelp, rtlsdrHandleOption, rtlsdrOpen, rtlsdrRun, rtlsdrStop, rtlsdrClose, rtlsdrGetDefaultSampleFormat, rtlsdrGetDefaultSampleRate, rtlsdrGetDefaultDemodulatorType, rtlsdrGetGain, rtlsdrGetMaxGain, rtlsdrGetGainDb, rtlsdrSetGain  },
 #endif
 
 #ifdef ENABLE_BLADERF
-    { "bladerf", SDR_BLADERF, bladeRFInitConfig, bladeRFShowHelp, bladeRFHandleOption, bladeRFOpen, bladeRFRun, noStop, bladeRFClose, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
+    { "bladerf", SDR_BLADERF, bladeRFInitConfig, bladeRFShowHelp, bladeRFHandleOption, bladeRFOpen, bladeRFRun, noStop, bladeRFClose, bladeRFGetDefaultSampleFormat, bladeRFGetDefaultSampleRate, bladeRFGetDefaultDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
 #endif
 
 #ifdef ENABLE_HACKRF
-    { "hackrf", SDR_HACKRF, hackRFInitConfig, hackRFShowHelp, hackRFHandleOption, hackRFOpen, hackRFRun, noStop, hackRFClose, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
+    { "hackrf", SDR_HACKRF, hackRFInitConfig, hackRFShowHelp, hackRFHandleOption, hackRFOpen, hackRFRun, noStop, hackRFClose, hackRFGetDefaultSampleFormat, hackRFGetDefaultSampleRate, hackRFGetDefaultDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
 #endif
 #ifdef ENABLE_LIMESDR
-    { "limesdr", SDR_LIMESDR, limesdrInitConfig, limesdrShowHelp, limesdrHandleOption, limesdrOpen, limesdrRun, noStop, limesdrClose, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
+    { "limesdr", SDR_LIMESDR, limesdrInitConfig, limesdrShowHelp, limesdrHandleOption, limesdrOpen, limesdrRun, noStop, limesdrClose, limesdrGetDefaultSampleFormat, limesdrGetDefaultSampleRate, limesdrGetDefaultDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
+#endif
+#ifdef ENABLE_AIRSPY
+    { "airspy", SDR_AIRSPY, airspyInitConfig, airspyShowHelp, airspyHandleOption, airspyOpen, airspyRun, airspyClose, noStop, airspyGetDefaultSampleFormat, airspyGetDefaultSampleRate, airspyGetDefaultDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
 #endif
 
-    { "none", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, noOpen, noRun, noStop, noClose, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
-    { "ifile", SDR_IFILE, ifileInitConfig, ifileShowHelp, ifileHandleOption, ifileOpen, ifileRun, noStop, ifileClose, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
+    { "none", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, noOpen, noRun, noClose, noSampleFormat, noSampleRate, noStop, noDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
+    { "ifile", SDR_IFILE, ifileInitConfig, ifileShowHelp, ifileHandleOption, ifileOpen, ifileRun, noStop, ifileClose, ifileGetDefaultSampleFormat, ifileGetDefaultSampleRate, ifileGetDefaultDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
 
-    { NULL, SDR_NONE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL } /* must come last */
+    { NULL, SDR_NONE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL } /* must come last */
 };
 
 void sdrInitConfig()
@@ -189,7 +213,7 @@ bool sdrHandleOption(int argc, char **argv, int *jptr)
 
 static sdr_handler *current_handler()
 {
-    static sdr_handler unsupported_handler = { "unsupported", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, unsupportedOpen, noRun, noStop, noClose, noGetGain, noGetMaxGain, noGetGainDb, noSetGain };
+    static sdr_handler unsupported_handler = { "unsupported", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, unsupportedOpen, noRun, noStop, noClose, noSampleFormat, noSampleRate, noDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain };
 
     for (int i = 0; sdr_handlers[i].name; ++i) {
         if (Modes.sdr_type == sdr_handlers[i].sdr_type) {
@@ -232,6 +256,21 @@ void sdrClose()
 {
     pthread_mutex_destroy(&Modes.reader_cpu_mutex);
     current_handler()->close();
+}
+
+input_format_t sdrGetDefaultSampleFormat()
+{
+    return current_handler()->getDefaultSampleFormat();
+}
+
+double sdrGetDefaultSampleRate()
+{
+    return current_handler()->getDefaultSampleRate();
+}
+
+demodulator_type_t sdrGetDefaultDemodulatorType()
+{
+    return current_handler()->getDefaultDemodulatorType();
 }
 
 void sdrMonitor()

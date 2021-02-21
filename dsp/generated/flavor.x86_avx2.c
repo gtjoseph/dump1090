@@ -13,11 +13,15 @@
 #define STARCH_IMPL(_function,_impl) starch_ ## _function ## _ ## _impl ## _ ## x86_avx2
 #define STARCH_IMPL_REQUIRES(_function,_impl,_feature) STARCH_IMPL(_function,_impl)
 
+#include "../impl/boxcar_u16.c"
 #include "../impl/magnitude_power_uc8.c"
+#include "../impl/magnitude_s16.c"
 #include "../impl/magnitude_sc16.c"
 #include "../impl/magnitude_sc16q11.c"
+#include "../impl/magnitude_u16o12.c"
 #include "../impl/magnitude_uc8.c"
 #include "../impl/mean_power_u16.c"
+#include "../impl/preamble_u16.c"
 
 
 #undef STARCH_ALIGNMENT
@@ -32,9 +36,13 @@
 #define STARCH_IMPL(_function,_impl) starch_ ## _function ## _aligned_ ## _impl ## _ ## x86_avx2
 #define STARCH_IMPL_REQUIRES(_function,_impl,_feature) STARCH_IMPL(_function,_impl)
 
+#include "../impl/boxcar_u16.c"
 #include "../impl/magnitude_power_uc8.c"
+#include "../impl/magnitude_s16.c"
 #include "../impl/magnitude_sc16.c"
 #include "../impl/magnitude_sc16q11.c"
+#include "../impl/magnitude_u16o12.c"
 #include "../impl/magnitude_uc8.c"
 #include "../impl/mean_power_u16.c"
+#include "../impl/preamble_u16.c"
 
