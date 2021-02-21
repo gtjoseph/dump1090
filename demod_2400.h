@@ -22,9 +22,8 @@
 
 #include <stdint.h>
 
-struct mag_buf;
-
 void demodulate2400(struct mag_buf *mag);
-void demodulate2400AC(struct mag_buf *mag);
+int demodulate2400Init(demodulator_context_t *ctx);
+void demodulate2400Free(void);
 
 #endif

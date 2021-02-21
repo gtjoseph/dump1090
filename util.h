@@ -22,6 +22,8 @@
 
 #include <stdint.h>
 
+#define ARRAY_LEN(a) ((size_t) (sizeof(a) / sizeof(0[a])))
+
 /* Returns system time in milliseconds */
 uint64_t mstime(void);
 
