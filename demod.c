@@ -129,6 +129,56 @@ void demodDemod(struct mag_buf *mag)
     currentDemod->demod_fn(mag);
 }
 
+#define jsonprintnum(__name, __fmt) (p += sprintf(p, "\"%s\": " __fmt ", ", #__name, ctx->__name))
+#define jsonprintstr(__name) (p += sprintf(p, "\"%s\": \"%s\", ", #__name, ctx->__name))
+
+#include "sdr_ifile.h"
+
+char *generateDemodJson(const char *url_path, int *len)
+{
+    size_t buflen = 8192;
+    char *buf = (char *) malloc(buflen), *p = buf;
+    int i;
+
+    MODES_NOTUSED(url_path);
+
+    p += sprintf(p, "{ \"demod\": { \"end\": %.1f, \"name\": \"%s\", ", mstime() / 1000.0, currentDemod->name);
+    p += sprintf(p, "\"sample_rate\": %.1f, ", Modes.sample_rate);
+    p += sprintf(p, "\"sample_format\": \"%s\", ", formatGetName(Modes.sample_format));
+    const char *fn = ifileGetFilename();
+    p += sprintf(p, "\"filename\": \"%s\", ", fn ?: "none");
+
+    jsonprintnum(preamble_threshold_db, "%.2f");
+    jsonprintnum(smoother_window, "%d");
+    jsonprintnum(demod_window_width, "%u");
+    jsonprintnum(demod_window_low, "%d");
+    jsonprintnum(demod_window_high, "%d");
+    jsonprintnum(preamble_window_width, "%u");
+    jsonprintnum(preamble_window_low, "%d");
+    jsonprintnum(preamble_window_high, "%d");
+    jsonprintnum(no_mark_limits, "%u");
+    jsonprintnum(preamble_strictness, "%u");
+    p += sprintf(p, "\"preamble_distro\": [ ");
+
+    for (i = ctx->preamble_window_low; i <= ctx->preamble_window_high; i++) {
+        p += sprintf(p, "%s%" PRIu64, (i == ctx->preamble_window_low ? "" : ", "), ctx->preamble_distro[DISTRO_OFFSET(i)]);
+    }
+    p += sprintf(p, " ], \"decode_distro\": [ ");
+    for (i = ctx->demod_window_low; i <= ctx->demod_window_high; i++) {
+        p += sprintf(p, "%s%" PRIu64, (i == ctx->demod_window_low ? "" : ", "), ctx->decode_distro[DISTRO_OFFSET(i)]);
+    }
+    p += sprintf(p, " ]}, ");
+
+    char *end = buf + buflen;
+
+    p = appendStatsJson(p, end, &Modes.stats_alltime, "total");
+
+    p += sprintf(p, " }\n");
+
+    *len = (p - buf);
+    return buf;
+}
+
 void demodFree(void)
 {
     if (currentDemod->demod_free_fn) {
@@ -162,9 +212,13 @@ void demodFree(void)
             }
             printf("\n");
         }
+
+        writeJsonToFile("demod.json", generateDemodJson);
+
     }
 
 }
+
 
 bool demodHandleOption(int argc, char **argv, int *jptr)
 {
