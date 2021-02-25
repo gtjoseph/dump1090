@@ -88,11 +88,17 @@ void modesInitNet(void);
 void modesQueueOutput(struct modesMessage *mm, struct aircraft *a);
 void modesNetPeriodicWork(void);
 
+struct stats;
 // TODO: move these somewhere else
 char *generateAircraftJson(const char *url_path, int *len);
 char *generateStatsJson(const char *url_path, int *len);
 char *generateReceiverJson(const char *url_path, int *len);
 char *generateHistoryJson(const char *url_path, int *len);
 void writeJsonToFile(const char *file, char * (*generator) (const char *,int*));
+char * appendStatsJson(char *p,
+                              char *end,
+                              struct stats *st,
+                              const char *key);
+
 
 #endif
