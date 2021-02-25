@@ -109,7 +109,10 @@ static void DEMOD_FN (struct mag_buf *mag)
             continue;
         }
 
-        ctx->decode_distro[abs(ctx->demod_window_low)]++;
+        if (Modes.stats) {
+            ctx->decode_distro[DISTRO_OFFSET(0)]++;
+        }
+
         Modes.stats_current.demod_accepted[mm.correctedbits]++;
 
         processSignalAndNoise(&mm, preamble_avg_mark, preamble_avg_space);

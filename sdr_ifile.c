@@ -111,6 +111,11 @@ bool ifileHandleOption(int argc, char **argv, int *jptr)
     return true;
 }
 
+const char *ifileGetFilename()
+{
+    return ifile.filename;
+}
+
 //
 //=========================================================================
 //
@@ -169,9 +174,10 @@ void ifileRun()
         sdrMonitor();
 
         /* wait for up to 1000ms for a buffer */
-        struct mag_buf *outbuf = fifo_acquire(100 /* milliseconds */);
+        struct mag_buf *outbuf = fifo_acquire(1000 /* milliseconds */);
         if (!outbuf) {
             // maybe we're slow, maybe we halted
+            fprintf(stderr, "ifile: No fifo buffers available\n");
             continue;
         }
 

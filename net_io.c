@@ -1739,7 +1739,7 @@ char *generateAircraftJson(const char *url_path, int *len) {
     return buf;
 }
 
-static char * appendStatsJson(char *p,
+char * appendStatsJson(char *p,
                               char *end,
                               struct stats *st,
                               const char *key)

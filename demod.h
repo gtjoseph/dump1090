@@ -134,4 +134,6 @@ int32_t demodCheckPreamble(const uint16_t *sa, const uint16_t *sc, demodulator_c
 
 void processSignalAndNoise(struct modesMessage *mm, uint16_t preamble_avg_mark, uint16_t preamble_avg_space);
 
+char *generateDemodJson(const char *url_path, int *len);
+
 #endif
