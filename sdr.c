@@ -124,10 +124,10 @@ static sdr_handler sdr_handlers[] = {
     { "limesdr", SDR_LIMESDR, limesdrInitConfig, limesdrShowHelp, limesdrHandleOption, limesdrOpen, limesdrRun, noStop, limesdrClose, limesdrGetDefaultSampleFormat, limesdrGetDefaultSampleRate, limesdrGetDefaultDemodulatorType },
 #endif
 #ifdef ENABLE_AIRSPY
-    { "airspy", SDR_AIRSPY, airspyInitConfig, airspyShowHelp, airspyHandleOption, airspyOpen, airspyRun, airspyClose, noStop, airspyGetDefaultSampleFormat, airspyGetDefaultSampleRate, airspyGetDefaultDemodulatorType },
+    { "airspy", SDR_AIRSPY, airspyInitConfig, airspyShowHelp, airspyHandleOption, airspyOpen, airspyRun, noStop, airspyClose, airspyGetDefaultSampleFormat, airspyGetDefaultSampleRate, airspyGetDefaultDemodulatorType },
 #endif
 
-    { "none", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, noOpen, noRun, noClose, noSampleFormat, noSampleRate, noStop, noDemodulatorType },
+    { "none", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, noOpen, noRun, noStop, noClose, noSampleFormat, noSampleRate, noDemodulatorType },
     { "ifile", SDR_IFILE, ifileInitConfig, ifileShowHelp, ifileHandleOption, ifileOpen, ifileRun, noStop, ifileClose, ifileGetDefaultSampleFormat, ifileGetDefaultSampleRate, ifileGetDefaultDemodulatorType },
 
     { NULL, SDR_NONE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL } /* must come last */
