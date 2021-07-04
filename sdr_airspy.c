@@ -320,6 +320,9 @@ bool airspyOpen()
     return true;
 }
 
+/*!
+ * This function is called by a thread in libairspy.
+ */
 static int handle_airspy_samples(airspy_transfer *transfer)
 {
     sdrMonitor();
@@ -405,42 +408,6 @@ void airspyRun()
         fprintf(stderr, "airspyRun: AirSpy.device = NULL\n");
         return;
     }
-
-    /*
-    char pb[17] = {0, };
-    uint8_t reg_value;
-    airspy_r820t_read(AirSpy.device, 9, &reg_value);
-    new_value = 0b00000000;
-    airspy_r820t_write(AirSpy.device, 9, reg_value);
-    fprintf(stderr, " 9: %s %s\n", print8(reg_value, pb), print8(new_value, &pb[9]));
-
-    airspy_r820t_read(AirSpy.device, 10, &reg_value);
-    new_value = 0b11110000;
-    airspy_r820t_write(AirSpy.device, 10, new_value);
-    fprintf(stderr, "10: %s %s\n", print8(reg_value, pb), print8(new_value, &pb[9]));
-
-    airspy_r820t_read(AirSpy.device, 11, &reg_value);
-    new_value = 0b01001111;
-    airspy_r820t_write(AirSpy.device, 11, new_value);
-    fprintf(stderr, "11: %s %s\n", print8(reg_value, pb), print8(new_value, &pb[9]));
-
-    airspy_r820t_read(AirSpy.device, 25, &reg_value);
-    new_value = 0b11001100;
-    airspy_r820t_write(AirSpy.device, 25, new_value);
-    fprintf(stderr, "25: %s %s\n", print8(reg_value, pb), print8(new_value, &pb[9]));
-
-    uint8_t new_value;
-    uint8_t reg_value;
-    D_airspy_r820t_read(AirSpy.device, 26, &reg_value);
-    new_value = 0b01100000;
-    D_airspy_r820t_write(AirSpy.device, 26, new_value);
-
-    airspy_r820t_read(AirSpy.device, 27, &reg_value);
-    new_value = 0b00000000;
-    airspy_r820t_write(AirSpy.device, 27, new_value);
-    fprintf(stderr, "27: %s %s\n", print8(reg_value, pb), print8(new_value, &pb[9]));
-*/
-
 
     int status = airspy_start_rx(AirSpy.device, &handle_airspy_samples, NULL);
     if (status != 0) {

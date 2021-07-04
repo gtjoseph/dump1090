@@ -89,4 +89,19 @@ int sdrSetGain(int step)
     return -1;
 }
 
+double sdrGetDefaultSampleRate()
+{
+    return 2.4e6;
+}
+
+input_format_t sdrGetDefaultSampleFormat()
+{
+    return INPUT_UC8;
+}
+
+demodulator_type_t sdrGetDefaultDemodulatorType()
+{
+    return DEMOD_2400;
+}
+
 

@@ -76,7 +76,7 @@ typedef int (* demod_init_fn_t)(demodulator_context_t *ctx);
 typedef void (* demod_free_fn_t)(void);
 typedef void (* demod_show_help_t)(void);
 
-typedef enum { DEMOD_2400 = 0, DEMOD_HIRATE, DEMOD_MULTI, DEMOD_NONE } demodulator_type_t;
+typedef enum { DEMOD_2400 = 0, DEMOD_HIRATE, DEMOD_NONE } demodulator_type_t;
 
 bool demodHandleOption(int argc, char **argv, int *jptr);
 int demodInit(void);

@@ -364,6 +364,16 @@ static void showHelp(void)
 "--lat <latitude>         Reference/receiver latitude for surface positions\n"
 "--lon <longitude>        Reference/receiver longitude for surface positions\n"
 "--max-range <distance>   Absolute maximum range for position decoding (in NM)\n"
+"--sample-rate <Hz or MHz>     Set sample rate (default: 2.4 MHz)\n"
+"--sample-format <format>      Set sample format.  One of:\n");
+
+    for (i = 0; i < INPUT_NONE; i++) {
+        printf("                         "
+            "%s: %s %s\n", formatGetName(i), formatGetDescription(i), i ? "" : "(default)");
+    }
+
+    printf(
+"                         Currently, only the ifile sdr supports different formats\n"
 "\n"
 // ------ 80 char limit ----------------------------------------------------------|
 "      Adaptive gain\n"
@@ -390,23 +400,6 @@ static void showHelp(void)
 // ------ 80 char limit ----------------------------------------------------------|
 "      Network connections\n"
 "\n"
-"--sample-rate <Hz or MHz>     Set sample rate (default: 2.4 MHz)\n"
-"--sample-format <format>      Set sample format.  One of:\n");
-
-    for (i = 0; i < INPUT_NONE; i++) {
-printf(
-"                         %s: %s %s\n", formatGetName(i), formatGetDescription(i), i ? "" : "(default)"
-);
-    }
-
-    printf(
-"                         Currently, only the ifile sdr supports different formats\n"
-"--interactive            Interactive mode refreshing data on screen. Implies --throttle\n"
-"--interactive-ttl <sec>  Remove from list if idle for <sec> (default: 60)\n"
-"--interactive-show-distance   Show aircraft distance and bearing instead of lat/lon\n"
-"                              (requires --lat and --lon)\n"
-"--interactive-distance-units  Distance units ('km', 'sm', 'nm') (default: 'nm')\n"
-"--interactive-callsign-filter Only callsigns that match the prefix or regex will be displayed\n"
 "--raw                    Show only messages hex values\n"
 "--net                    Enable networking with default ports unless overridden\n"
 "--no-modeac-auto         Don't enable Mode A/C if requested by a net connection\n"

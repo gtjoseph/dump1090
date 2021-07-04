@@ -47,13 +47,13 @@ typedef struct {
     void (*run)();
     void (*stop)();
     void (*close)();
+    input_format_t (*getDefaultSampleFormat)();
+    double (*getDefaultSampleRate)();
+    demodulator_type_t(*getDefaultDemodulatorType)();
     int (*getgain)();
     int (*getmaxgain)();
     double (*getgaindb)(int);
     int (*setgain)(int);
-    input_format_t (*getDefaultSampleFormat)();
-    double (*getDefaultSampleRate)();
-    demodulator_type_t(*getDefaultDemodulatorType)();
 } sdr_handler;
 
 static void noInitConfig()
@@ -153,7 +153,7 @@ static sdr_handler sdr_handlers[] = {
     { "airspy", SDR_AIRSPY, airspyInitConfig, airspyShowHelp, airspyHandleOption, airspyOpen, airspyRun, airspyClose, noStop, airspyGetDefaultSampleFormat, airspyGetDefaultSampleRate, airspyGetDefaultDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
 #endif
 
-    { "none", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, noOpen, noRun, noClose, noSampleFormat, noSampleRate, noStop, noDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
+    { "none", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, noOpen, noRun, noStop, noClose, noSampleFormat, noSampleRate, noDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
     { "ifile", SDR_IFILE, ifileInitConfig, ifileShowHelp, ifileHandleOption, ifileOpen, ifileRun, noStop, ifileClose, ifileGetDefaultSampleFormat, ifileGetDefaultSampleRate, ifileGetDefaultDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
 
     { NULL, SDR_NONE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL } /* must come last */

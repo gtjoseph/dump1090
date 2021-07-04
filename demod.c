@@ -21,7 +21,6 @@
 #include "demod.h"
 #include "demod_2400.h"
 #include "demod_hirate.h"
-#include "demod_multi.h"
 #include <inttypes.h>
 
 typedef struct {
@@ -38,7 +37,6 @@ typedef struct {
 static demodulator_t demods[] = {
     { "2400", " Default 2.4 MS/s demodulator", DEMOD_2400, demodulate2400, demodulate2400Init, demodulate2400Free, NULL},
     { "hirate", " HiRate", DEMOD_HIRATE, demodulateHiRate, demodulateHiRateInit, demodulateHiRateFree, demodulateHiRateHelp},
-    { "multi", " MultiRate", DEMOD_MULTI, demodulateMulti, demodulateMultiInit, demodulateMultiFree, demodulateMultiHelp},
     { NULL, "NULL", DEMOD_NONE, NULL, NULL, NULL, NULL }
 };
 
