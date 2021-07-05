@@ -1,15 +1,18 @@
-# Demodulators
+# HiRate Demodulator
 
-There are currently 3 demodulator implementations in this build.
-Which is used is determined by the `--demod` command line option:
+In addition to the original "2400" demodulator used for a sample rate
+of 2.4MHz, this build includes a new "hirate" demodulator for use with
+samples rates above 3.0MHz. The new demodulator is needed for AirSpy
+device support and can be used for other SDRs that also support sample
+rates in excess of 2.4HMz.
+
+Which demod is used is determined by the `--demod` command line option:
 
 `--demod 2400`: The original 2.4MS/s demodulator.  This is the default for all SDRs except the AirSpy.
 
-`--demod multi`: A demodulator that can run at 2.0MS/s, 4.0MS/s, 6.0MS/s, 8.0MS/s 10.0MS/s and 12.0MS/s.
-
 `--demod hirate`: A demodulator that can run at arbitrary sample rates above 3.0MS/s.  This is the default for the AirSpy SDR.
 
-## Options for multi and hirate demodulators
+## Options for the hirate demodulator
 
 |Option......................................................|Description|multi?|hirate?|
 |:--------------|:-|:-:|:-:|
@@ -30,7 +33,7 @@ Some good practices:
  * The preamble threshold seems to work well at the 3.0db default but try slightly lower or higher and see what happens to CPU utilization and decoded message count.
  * You may get better message counts with a narrower, or even no, preamble window.  If you use the `--stats` option, a table will be printed that shows how many preambles were detected at each position in the window. 
  * A low preamble strictness may result in more messages decoded but will raise CPU slightly.
- * If you're using the hirate demodulator, the message window can result in more messages being decoded than using the preamble window.  Again, if you use the `--stats` option, a table will be printed that shows how many messages were decoded at each position in the window. 
+ * Using the message window can result in more messages being decoded than using the preamble window.  Again, if you use the `--stats` option, a table will be printed that shows how many messages were decoded at each position in the window. 
  
 **WARNING**:  For the most part, CPU utilization will be _inversely_ proportional to the actual message rate.  It takes more CPU to _search_ for a message than it does to actually decode one so you may see CPU utilization go _up_ during quiet periods.
 

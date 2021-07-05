@@ -48,7 +48,7 @@ limited SDR support only.
 
 Pass `--build-profiles` to `dpkg-buildpackage` with a comma-separated list of
 profiles. The list of profiles should include `custom` and zero or more of
-`rtlsdr`, `bladerf`, `hackrf`, `limesdr` depending on what you want:
+`rtlsdr`, `bladerf`, `hackrf`, `limesdr`, `airspy` depending on what you want:
 
 ```bash
 $ dpkg-buildpackage -b --no-sign --build-profiles=custom,rtlsdr          # builds with rtlsdr support only
@@ -73,6 +73,9 @@ libhackrf.
 
 ``make LIMESDR=no`` will disable LimeSDR support and remove the dependency on
 libLimeSuite.
+
+``make AIRSPY=no`` will disable AirSpy support and remove the dependency on
+libairspy.
 
 ## Building on OSX
 
