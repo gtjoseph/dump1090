@@ -13,6 +13,10 @@ Files: cprtests.c cpr.h crc.c crc.h demod_2000.h demod_2400.c demod_2000.h icao_
 Copyright: Copyright 2014,2015 Oliver Jowett <oliver@mutability.co.uk>
 License: GPL-2+
 
+Files: sdr_airspy.c sdr_airspy.h demod.c demod.h demod_hirate.c demod_hirate.h
+Copyright: Copyright (c) 2020 George Joseph <g.devel@wxy78.net>
+License: GPL-2+
+
 Files: compat/clock_gettime/*
 Copyright: Copyright (c), MM Weiss
 License: BSD-3-Clause

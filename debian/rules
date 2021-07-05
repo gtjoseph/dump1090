@@ -20,6 +20,7 @@ ifeq (,$(filter custom,$(DEB_BUILD_PROFILES)))
   BLADERF = yes
   HACKRF = yes
   LIMESDR = yes
+  AIRSPY=yes
 else
   # Custom build
   ifneq (,$(filter rtlsdr,$(DEB_BUILD_PROFILES)))
@@ -42,10 +43,15 @@ else
   else
     LIMESDR = no
   endif
+  ifneq (,$(filter airspy,$(DEB_BUILD_PROFILES)))
+    AIRSPY = yes
+  else
+    AIRSPY = no
+  endif
 endif
 
 override_dh_auto_build:
-	dh_auto_build -- RTLSDR=$(RTLSDR) BLADERF=$(BLADERF) HACKRF=$(HACKRF) LIMESDR=$(LIMESDR) DUMP1090_VERSION=$(DEB_VERSION)
+	dh_auto_build -- RTLSDR=$(RTLSDR) BLADERF=$(BLADERF) HACKRF=$(HACKRF) LIMESDR=$(LIMESDR) AIRSPY=$(AIRSPY) DUMP1090_VERSION=$(DEB_VERSION)
 
 override_dh_install:
 	dh_install
