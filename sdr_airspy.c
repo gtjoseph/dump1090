@@ -418,7 +418,7 @@ void airspyRun()
 
     // airspy_start_rx does not block so we need to wait until the streaming is finished
     // before returning from the airspyRun function
-    while (airspy_is_streaming(AirSpy.device) == AIRSPY_TRUE && !Modes.exit) {
+    while (AirSpy.device && airspy_is_streaming(AirSpy.device) == AIRSPY_TRUE && !Modes.exit) {
         struct timespec slp = { 0, 100 * 1000 * 1000};
         nanosleep(&slp, NULL);
     }
