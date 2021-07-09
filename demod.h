@@ -66,15 +66,31 @@ typedef struct {
     int32_t     preamble_window_low;
     int32_t     preamble_window_high;
     bool        no_mark_limits;
+    bool        drop_dups;
     preamble_strictness_t preamble_strictness;
 } demodulator_context_t;
 
+struct demodulator;
+typedef struct demodulator demodulator_t;
+
 typedef void (* demod_fn_t)(struct mag_buf *mag);
-typedef int (* demod_init_fn_t)(demodulator_context_t *ctx);
+typedef int (* demod_init_fn_t)(demodulator_t *demod);
 typedef void (* demod_free_fn_t)(void);
 typedef void (* demod_show_help_t)(void);
 
 typedef enum { DEMOD_2400 = 0, DEMOD_HIRATE, DEMOD_NONE } demodulator_type_t;
+
+struct demodulator {
+    const char *name;
+    const char *description;
+    demodulator_type_t demod_type;
+    demod_fn_t demod_fn;
+    demod_init_fn_t demod_init_fn;
+    demod_free_fn_t demod_free_fn;
+    demod_show_help_t demod_show_help_fn;
+    demodulator_context_t *ctx;
+};
+
 
 bool demodHandleOption(int argc, char **argv, int *jptr);
 int demodInit(void);
@@ -131,7 +147,5 @@ int32_t demodCheckPreamble(const uint16_t *sa, const uint16_t *sc, demodulator_c
     uint16_t *preamble_avg_mark, uint16_t *preamble_avg_space, uint32_t *preamble_best_offset );
 
 void processSignalAndNoise(struct modesMessage *mm, uint16_t preamble_avg_mark, uint16_t preamble_avg_space);
-
-char *generateDemodJson(const char *url_path, int *len);
 
 #endif

@@ -23,25 +23,6 @@
 #include "demod_hirate.h"
 #include <inttypes.h>
 
-typedef struct {
-    const char *name;
-    const char *description;
-    demodulator_type_t demod_type;
-    demod_fn_t demod_fn;
-    demod_init_fn_t demod_init_fn;
-    demod_free_fn_t demod_free_fn;
-    demod_show_help_t demod_show_help_fn;
-} demodulator_t;
-
-// Thses must be in the same order as demodulator_type_t
-static demodulator_t demods[] = {
-    { "2400", " Default 2.4 MS/s demodulator", DEMOD_2400, demodulate2400, demodulate2400Init, demodulate2400Free, NULL},
-    { "hirate", " HiRate", DEMOD_HIRATE, demodulateHiRate, demodulateHiRateInit, demodulateHiRateFree, demodulateHiRateHelp},
-    { NULL, "NULL", DEMOD_NONE, NULL, NULL, NULL, NULL }
-};
-
-static demodulator_t *currentDemod;
-
 static demodulator_context_t _ctx = {
     .preamble_threshold_db = DEFAULT_PREAMBLE_THRESHOLD_DB,
     .smoother_window = -1,
@@ -49,6 +30,13 @@ static demodulator_context_t _ctx = {
 };
 
 static demodulator_context_t *ctx = &_ctx;
+
+// Thses must be in the same order as demodulator_type_t
+static demodulator_t demods[] = {
+    { "2400", " Default 2.4 MS/s demodulator", DEMOD_2400, demodulate2400, demodulate2400Init, demodulate2400Free, NULL, NULL},
+    { "hirate", " HiRate", DEMOD_HIRATE, demodulateHiRate, demodulateHiRateInit, demodulateHiRateFree, demodulateHiRateHelp, NULL},
+    { NULL, "NULL", DEMOD_NONE, NULL, NULL, NULL, NULL, NULL }
+};
 
 static demodulator_t *demodGetByType(demodulator_type_t demod_type)
 {
@@ -73,11 +61,13 @@ static demodulator_t *demodGetByName(const char *name)
 
 int demodInit(void)
 {
-    if (currentDemod == NULL) {
-        currentDemod = demodGetByType(sdrGetDefaultDemodulatorType());
+    size_t i;
+
+    if (Modes.current_demod == NULL) {
+        Modes.current_demod = demodGetByType(sdrGetDefaultDemodulatorType());
     }
 
-    size_t i;
+    Modes.current_demod->ctx = ctx;
 
     ctx->samples_per_symbol = (uint32_t)(Modes.sample_rate / ADSB_SYMBOL_RATE);
     ctx->samples_per_bit = ctx->samples_per_symbol * SYMBOLS_PER_BIT;
@@ -106,13 +96,14 @@ int demodInit(void)
         ctx->sample_byte_offsets[i] = i * ctx->samples_per_byte;
     }
 
-    fprintf(stderr, "Demod %s:\n", currentDemod->description);
+    fprintf(stderr, "Demod %s:\n", Modes.current_demod->description);
     fprintf(stderr, "    --demod-smoother-window:  %d samples\n", ctx->smoother_window);
     fprintf(stderr, " --demod-preamble-threshold:  %4.2fdb factor: %4.2f\n", ctx->preamble_threshold_db, ctx->preamble_threshold);
     fprintf(stderr, "--demod-preamble-strictness:  %d\n", ctx->preamble_strictness);
     fprintf(stderr, "    --demod-preamble-window:  %3d samples -> %3d samples  Width: %4d\n", ctx->preamble_window_low, ctx->preamble_window_high, ctx->preamble_window_width);
     fprintf(stderr, "       --demod-demod-window:  %3d samples -> %3d samples  Width: %4d\n", ctx->demod_window_low, ctx->demod_window_high, ctx->demod_window_width);
     fprintf(stderr, "     --demod-no-mark-limits:  %s\n", ctx->no_mark_limits ? "true" : "false");
+    fprintf(stderr, "      --demod-drop-dup-msgs:  %s\n", ctx->drop_dups ? "true" : "false");
     fprintf(stderr, "\n");
 
     if (Modes.stats) {
@@ -124,8 +115,8 @@ int demodInit(void)
         Modes.demod_window_width = ctx->demod_window_width;
     }
 
-    if (currentDemod->demod_init_fn) {
-        return currentDemod->demod_init_fn(ctx);
+    if (Modes.current_demod->demod_init_fn) {
+        return Modes.current_demod->demod_init_fn(Modes.current_demod);
     }
 
     return 0;
@@ -133,22 +124,15 @@ int demodInit(void)
 
 void demodDemod(struct mag_buf *mag)
 {
-    currentDemod->demod_fn(mag);
+    Modes.current_demod->demod_fn(mag);
 }
-
-#define jsonprintnum(__name, __fmt) (p += sprintf(p, "\"%s\": " __fmt ", ", #__name, ctx->__name))
-#define jsonprintstr(__name) (p += sprintf(p, "\"%s\": \"%s\", ", #__name, ctx->__name))
-
-#include "sdr_ifile.h"
-
 
 void demodFree(void)
 {
-    if (currentDemod->demod_free_fn) {
-        currentDemod->demod_free_fn();
+    if (Modes.current_demod->demod_free_fn) {
+        Modes.current_demod->demod_free_fn();
     }
 }
-
 
 bool demodHandleOption(int argc, char **argv, int *jptr)
 {
@@ -156,8 +140,8 @@ bool demodHandleOption(int argc, char **argv, int *jptr)
     int more = j+1 < argc; // There are more arguments
 
     if (!strcmp(argv[j], "--demod") && more) {
-        currentDemod = demodGetByName(argv[++j]);
-        if (!currentDemod) {
+        Modes.current_demod = demodGetByName(argv[++j]);
+        if (!Modes.current_demod) {
             fprintf(stderr, "Error: --demod '%s' is unknown.\n", argv[j]);
             fprintf(stderr, "Supported demodulators:\n");
             for (int i = 0; demods[i].name; ++i) {
@@ -213,6 +197,8 @@ bool demodHandleOption(int argc, char **argv, int *jptr)
         j++;
     } else if (!strcmp(argv[j], "--demod-no-mark-limits")) {
         ctx->no_mark_limits = true;
+    } else if (!strcmp(argv[j], "--demod-drop-dup-msgs")) {
+        ctx->drop_dups = true;
     } else {
         return false;
     }

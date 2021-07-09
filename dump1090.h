@@ -323,6 +323,7 @@ struct _Modes {                             // Internal state
 #endif
 
     // Configuration
+    demodulator_t *current_demod;    // The current demodulator
     sdr_type_t sdr_type;             // where are we getting data from?
     int   nfix_crc;                  // Number of crc bit error(s) to correct
     int   check_crc;                 // Only display messages with good CRC

@@ -519,6 +519,8 @@ static void decodeExtendedSquitter(struct modesMessage *mm);
 //
 int decodeModesMessage(struct modesMessage *mm, const unsigned char *in)
 {
+    static int64_t lastTimestampMsg;
+
     // score the message if needed (it might be coming off the network)
     if (mm->score == SR_NOT_SET)
         mm->score = scoreModesMessage(in);
@@ -533,6 +535,9 @@ int decodeModesMessage(struct modesMessage *mm, const unsigned char *in)
 
     // Apply corrections to our local copy
     uint32_t short_syndrome, long_syndrome;
+    static char lastMsg[MODES_LONG_MSG_BYTES];
+    static uint32_t last_syndrome;
+
     int corrections = correctMessage(in, mm->msg, &short_syndrome, &long_syndrome);
     const unsigned char *msg = mm->msg;
 
@@ -616,6 +621,19 @@ int decodeModesMessage(struct modesMessage *mm, const unsigned char *in)
     default:
         // All other message types, we don't know how to handle their CRCs, give up
         return -2;
+    }
+
+    if (Modes.current_demod && Modes.current_demod->ctx->drop_dups) {
+        if (mm->timestampMsg != MAGIC_MLAT_TIMESTAMP
+                && (imaxabs((int64_t) mm->timestampMsg - lastTimestampMsg) < 0.005 * 12e6)
+                && ((mm->crc > 0 && mm->crc == last_syndrome) || memcmp(lastMsg, msg, MODES_LONG_MSG_BYTES) == 0)) {
+            // discard duplicates with receiver timestamps closer than 5 ms (somewhat arbitrary)
+            // this might not work with Radarcape as the timestamps don't use a 12 MHz timebase (not sure about it)
+            return -3;
+        }
+        lastTimestampMsg = mm->timestampMsg;
+        last_syndrome = mm->crc;
+        memcpy(lastMsg, msg, MODES_LONG_MSG_BYTES);
     }
 
     // decode the bulk of the message

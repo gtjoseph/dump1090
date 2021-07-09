@@ -269,6 +269,8 @@ static void demodulateHiRateTask(struct mag_buf *mag)
         if (score < 0) {
             if (score == -1) {
                 Modes.stats_current.demod_rejected_unknown_icao++;
+            } else if (score == -3) {
+                Modes.stats_current.demod_rejected_dup++;
             } else {
                 Modes.stats_current.demod_rejected_bad++;
             }
@@ -323,9 +325,9 @@ void demodulateHiRate(struct mag_buf *mag)
  * @brief Demodulator initialization
  * @param context (not used)
  */
-int demodulateHiRateInit(demodulator_context_t *context)
+int demodulateHiRateInit(demodulator_t *demod)
 {
-    ctx = context;
+    ctx = demod->ctx;
 
     return 0;
 }
@@ -358,6 +360,8 @@ void demodulateHiRateHelp(void)
     printf("                                   average mark * 0.707 and * 1.414. Setting this option\n");
     printf("                                   will cause a symbol to be considered a 'mark' as long as\n");
     printf("                                   it's greater than it's accompanying 'space'.\n");
+    printf("--demod-drop-dup-msgs              Drops duplicate messages that arrive within 5us");
+    printf("                                   of each other.\n");
     printf("\n");
 }
 

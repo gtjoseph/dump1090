@@ -6,7 +6,8 @@ CPPFLAGS += -I. -DMODES_DUMP1090_VERSION=\"$(DUMP1090_VERSION)\" -DMODES_DUMP109
 APPEND_CFLAGS := $(CFLAGS)
 DIALECT = -std=c11
 override CFLAGS := $(DIALECT) -O3 -g -Wall -Wmissing-declarations -Werror -W -D_DEFAULT_SOURCE -fno-common
-LIBS = -lpthread -lm
+PREPEND_LIBS := $(LIBS)
+override LIBS := $(PREPEND_LIBS) -lpthread -lm
 SDR_OBJ = cpu.o sdr.o fifo.o sdr_ifile.o dsp/helpers/tables.o
 
 # Try to autodetect available libraries via pkg-config if no explicit setting was used

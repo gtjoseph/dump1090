@@ -23,7 +23,7 @@
 #include <stdint.h>
 
 void demodulate2400(struct mag_buf *mag);
-int demodulate2400Init(demodulator_context_t *ctx);
+int demodulate2400Init(demodulator_t *demod);
 void demodulate2400Free(void);
 
 #endif

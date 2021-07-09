@@ -26,6 +26,8 @@
 #include <gd.h>
 #endif
 
+demodulator_context_t *ctx;
+
 // 2.4MHz sampling rate version
 //
 // When sampling at 2.4MHz we have exactly 6 samples per 5 symbols.
@@ -138,6 +140,7 @@ static void demodulate2400Task(struct mag_buf *mag)
         uint32_t base_signal, base_noise;
         int try_phase;
         int msglen;
+        int score;
 
         // Look for a message starting at around sample 0 with phase offset 3..7
 
@@ -223,7 +226,7 @@ static void demodulate2400Task(struct mag_buf *mag)
         bestmsg = NULL; bestscore = SR_NOT_SET; bestphase = -1;
         for (try_phase = 4; try_phase <= 8; ++try_phase) {
             uint16_t *pPtr;
-            int phase, score;
+            int phase;
 
             // Decode all the next 112 bits, regardless of the actual message
             // size. We'll check the actual message type later
@@ -371,13 +374,19 @@ static void demodulate2400Task(struct mag_buf *mag)
 
         mm.score = bestscore;
 
+        score = decodeModesMessage(&mm, bestmsg);
         // Decode the received message
-        if (decodeModesMessage(&mm, bestmsg) < 0) {
-            Modes.stats_current.demod_rejected_bad++;
+        if (score < 0) {
+            if (score == -1) {
+                Modes.stats_current.demod_rejected_unknown_icao++;
+            } else if (score == -3) {
+                Modes.stats_current.demod_rejected_dup++;
+            } else {
+                Modes.stats_current.demod_rejected_bad++;
+            }
             continue;
-        } else {
-            Modes.stats_current.demod_accepted[mm.correctedbits]++;
         }
+        Modes.stats_current.demod_accepted[mm.correctedbits]++;
 
         // measure signal power
         {
@@ -744,9 +753,9 @@ void demodulate2400(struct mag_buf *mag)
     fifo_release(mag);
 }
 
-int demodulate2400Init(demodulator_context_t *ctx)
+int demodulate2400Init(demodulator_t *demod)
 {
-    MODES_NOTUSED(ctx);
+    ctx = demod->ctx;
     return 0;
 }
 

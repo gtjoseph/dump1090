@@ -24,7 +24,7 @@
 #include "demod.h"
 
 void demodulateHiRate(struct mag_buf *mag);
-int demodulateHiRateInit(demodulator_context_t *ctx);
+int demodulateHiRateInit(demodulator_t *demod);
 void demodulateHiRateFree(void);
 void demodulateHiRateHelp(void);
 
