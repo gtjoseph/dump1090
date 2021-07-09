@@ -277,7 +277,7 @@ static void demodulateHiRateTask(struct mag_buf *mag)
 
         message_count++;
         if (Modes.stats) {
-            ctx->decode_distro[DISTRO_OFFSET(msg_ctx.msg_sample_offset)]++;
+            Modes.stats_current.demod_decode_distro[DISTRO_OFFSET(msg_ctx.msg_sample_offset)]++;
         }
 
         Modes.stats_current.demod_accepted[mm.correctedbits]++;
@@ -351,7 +351,7 @@ void demodulateHiRateHelp(void)
     printf("                                   search for a message.  May be negative.\n");
     printf("                                   h: Offset from the end of the preamble to stop the\n");
     printf("                                   search for a message.\n");
-    printf("                                   Inclusive window must not exceed %d.\n", MAX_WINDOW_WIDTH);
+    printf("                                   Inclusive window must not exceed %d.\n", DEMOD_MAX_WINDOW_WIDTH);
     printf("                                   The default is %d:%d\n", DEFAULT_DEMOD_WINDOW_LOW, DEFAULT_DEMOD_WINDOW_HIGH);
     printf("--demod-no-mark-limits             Normally a symbol in the message data will only be\n");
     printf("                                   considered a 'mark' if it falls between the preamble\n");

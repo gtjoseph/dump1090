@@ -1851,12 +1851,38 @@ char * appendStatsJson(char *p,
                       st->unreliable_aircraft,
                       st->messages_total);
 
+
+    for (i = 0; i < DEMOD_MAX_WINDOW_WIDTH; i++) {
+        if (i == 0) {
+            p = safe_snprintf(p, end, ",\"preamble_distro\":[%" PRIu64, st->demod_preamble_distro[i]);
+        } else {
+            p = safe_snprintf(p, end, ",%" PRIu64, st->demod_preamble_distro[i]);
+        }
+        if (i == DEMOD_MAX_WINDOW_WIDTH - 1) {
+            p = safe_snprintf(p, end, "]");
+        }
+    }
+
+    for (i = 0; i < DEMOD_MAX_WINDOW_WIDTH; i++) {
+        if (i == 0) {
+            p = safe_snprintf(p, end, ",\"decode_distro\":[%" PRIu64, st->demod_decode_distro[i]);
+        } else {
+            p = safe_snprintf(p, end, ",%" PRIu64, st->demod_decode_distro[i]);
+        }
+        if (i == DEMOD_MAX_WINDOW_WIDTH - 1) {
+            p = safe_snprintf(p, end, "]");
+        }
+    }
+
     for (i = 0; i < 32; ++i) {
         if (i == 0)
             p = safe_snprintf(p, end, ",\"messages_by_df\":[%u", st->messages_by_df[i]);
         else
             p = safe_snprintf(p, end, ",%u", st->messages_by_df[i]);
     }
+
+
+
     p = safe_snprintf(p, end, "]");
 
     p = safe_snprintf(p, end,

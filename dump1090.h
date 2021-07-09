@@ -409,6 +409,13 @@ struct _Modes {                             // Internal state
     float adaptive_range_target;
     unsigned adaptive_range_scan_delay;
     unsigned adaptive_range_rescan_delay;
+
+    uint32_t    demod_window_width;
+    int32_t     demod_window_low;
+    int32_t     demod_window_high;
+    uint32_t    preamble_window_width;
+    int32_t     preamble_window_low;
+    int32_t     preamble_window_high;
 };
 
 extern struct _Modes Modes;

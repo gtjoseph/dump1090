@@ -138,6 +138,11 @@ struct stats {
     uint32_t adaptive_loud_undecoded;                   // Total number of loud, undecoded bursts
     uint32_t adaptive_loud_decoded;                     // Total number of loud, decoded messages
     double adaptive_noise_dbfs;                         // Current adaptive-dynamic-range smoothed noise measurement, dBFS
+
+    // demod window stats
+    uint64_t    demod_decode_distro[DEMOD_MAX_WINDOW_WIDTH];
+    uint64_t    demod_preamble_distro[DEMOD_MAX_WINDOW_WIDTH];
+
 };
 
 void add_stats(const struct stats *st1, const struct stats *st2, struct stats *target);

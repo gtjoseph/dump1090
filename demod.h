@@ -29,7 +29,7 @@ struct mag_buf;
 #define SYMBOLS_PER_PREAMBLE (BITS_PER_PREAMBLE * 2)
 
 #define DEFAULT_PREAMBLE_THRESHOLD_DB 3.0
-#define MAX_WINDOW_WIDTH               15
+#define DEMOD_MAX_WINDOW_WIDTH         15
 #define WINDOW_MIDPOINT                 7
 #define DEFAULT_DEMOD_WINDOW_WIDTH      1
 #define DEFAULT_DEMOD_WINDOW_LOW        0
@@ -67,8 +67,6 @@ typedef struct {
     int32_t     preamble_window_high;
     bool        no_mark_limits;
     preamble_strictness_t preamble_strictness;
-    uint64_t    decode_distro[MAX_WINDOW_WIDTH];
-    uint64_t    preamble_distro[MAX_WINDOW_WIDTH];
 } demodulator_context_t;
 
 typedef void (* demod_fn_t)(struct mag_buf *mag);

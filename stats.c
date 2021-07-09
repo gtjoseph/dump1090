@@ -209,6 +209,26 @@ void display_stats(struct stats *st) {
     printf("  %8u aircraft tracks where only one message was seen\n", st->single_message_aircraft);
     printf("  %8u aircraft tracks which were not marked reliable\n", st->unreliable_aircraft);
 
+    if (Modes.preamble_window_width) {
+        printf("       Successful Preamble Detection Offsets\n");
+        printf("       Detection window width %d\n", Modes.preamble_window_width);
+            printf("       Offset         Count\n");
+
+        for (int i = Modes.preamble_window_low; i <= Modes.preamble_window_high; i++) {
+            printf("       %3d:    %12" PRIu64 "\n", i, st->demod_preamble_distro[DISTRO_OFFSET(i)]);
+        }
+    }
+
+    if (Modes.demod_window_width) {
+        printf("       Successful Message Demod Offsets\n");
+        printf("       Demod window width: %d\n", Modes.demod_window_width);
+            printf("       Offset         Count\n");
+
+        for (int i = Modes.demod_window_low; i <= Modes.demod_window_high; i++) {
+            printf("       %3d:    %12" PRIu64 "\n", i, st->demod_decode_distro[DISTRO_OFFSET(i)]);
+        }
+    }
+
     {
         uint64_t demod_cpu_millis = (uint64_t)st->demod_cpu.tv_sec*1000UL + st->demod_cpu.tv_nsec/1000000UL;
         uint64_t reader_cpu_millis = (uint64_t)st->reader_cpu.tv_sec*1000UL + st->reader_cpu.tv_nsec/1000000UL;
@@ -389,6 +409,16 @@ void add_stats(const struct stats *st1, const struct stats *st2, struct stats *t
     target->unique_aircraft = st1->unique_aircraft + st2->unique_aircraft;
     target->single_message_aircraft = st1->single_message_aircraft + st2->single_message_aircraft;
     target->unreliable_aircraft = st1->unreliable_aircraft + st2->unreliable_aircraft;
+
+    for (int i = Modes.demod_window_low; i <= Modes.demod_window_high; i++) {
+        target->demod_decode_distro[DISTRO_OFFSET(i)] =
+            st1->demod_decode_distro[DISTRO_OFFSET(i)] + st2->demod_decode_distro[DISTRO_OFFSET(i)];
+    }
+
+    for (int i = Modes.preamble_window_low; i <= Modes.preamble_window_high; i++) {
+        target->demod_preamble_distro[DISTRO_OFFSET(i)] =
+            st1->demod_preamble_distro[DISTRO_OFFSET(i)] + st2->demod_preamble_distro[DISTRO_OFFSET(i)];
+    }
 
     // range histogram
     for (i = 0; i < RANGE_BUCKET_COUNT; ++i)

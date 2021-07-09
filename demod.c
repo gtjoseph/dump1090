@@ -115,6 +115,15 @@ int demodInit(void)
     fprintf(stderr, "     --demod-no-mark-limits:  %s\n", ctx->no_mark_limits ? "true" : "false");
     fprintf(stderr, "\n");
 
+    if (Modes.stats) {
+        Modes.preamble_window_low = ctx->preamble_window_low;
+        Modes.preamble_window_high = ctx->preamble_window_high;
+        Modes.preamble_window_width = ctx->preamble_window_width;
+        Modes.demod_window_low = ctx->demod_window_low;
+        Modes.demod_window_high = ctx->demod_window_high;
+        Modes.demod_window_width = ctx->demod_window_width;
+    }
+
     if (currentDemod->demod_init_fn) {
         return currentDemod->demod_init_fn(ctx);
     }
@@ -132,89 +141,12 @@ void demodDemod(struct mag_buf *mag)
 
 #include "sdr_ifile.h"
 
-char *generateDemodJson(const char *url_path, int *len)
-{
-    size_t buflen = 8192;
-    char *buf = (char *) malloc(buflen), *p = buf;
-    int i;
-
-    MODES_NOTUSED(url_path);
-
-    p += sprintf(p, "{ \"demod\": { \"end\": %.1f, \"name\": \"%s\", ", mstime() / 1000.0, currentDemod->name);
-    p += sprintf(p, "\"sample_rate\": %.1f, ", Modes.sample_rate);
-    p += sprintf(p, "\"sample_format\": \"%s\", ", formatGetName(Modes.sample_format));
-    const char *fn = ifileGetFilename();
-    p += sprintf(p, "\"filename\": \"%s\", ", fn ?: "none");
-
-    jsonprintnum(preamble_threshold_db, "%.2f");
-    jsonprintnum(smoother_window, "%d");
-    jsonprintnum(demod_window_width, "%u");
-    jsonprintnum(demod_window_low, "%d");
-    jsonprintnum(demod_window_high, "%d");
-    jsonprintnum(preamble_window_width, "%u");
-    jsonprintnum(preamble_window_low, "%d");
-    jsonprintnum(preamble_window_high, "%d");
-    jsonprintnum(no_mark_limits, "%u");
-    jsonprintnum(preamble_strictness, "%u");
-    p += sprintf(p, "\"preamble_distro\": [ ");
-
-    for (i = ctx->preamble_window_low; i <= ctx->preamble_window_high; i++) {
-        p += sprintf(p, "%s%" PRIu64, (i == ctx->preamble_window_low ? "" : ", "), ctx->preamble_distro[DISTRO_OFFSET(i)]);
-    }
-    p += sprintf(p, " ], \"decode_distro\": [ ");
-    for (i = ctx->demod_window_low; i <= ctx->demod_window_high; i++) {
-        p += sprintf(p, "%s%" PRIu64, (i == ctx->demod_window_low ? "" : ", "), ctx->decode_distro[DISTRO_OFFSET(i)]);
-    }
-    p += sprintf(p, " ]}, ");
-
-    char *end = buf + buflen;
-
-    p = appendStatsJson(p, end, &Modes.stats_alltime, "total");
-
-    p += sprintf(p, " }\n");
-
-    *len = (p - buf);
-    return buf;
-}
 
 void demodFree(void)
 {
     if (currentDemod->demod_free_fn) {
         currentDemod->demod_free_fn();
     }
-
-    if (Modes.stats && (ctx->preamble_window_width || ctx->demod_window_width)) {
-        int32_t i;
-
-        printf("\n");
-        printf("Demod %s:\n", currentDemod->description);
-
-        if (ctx->preamble_window_width) {
-            printf("Successful Preamble Detection Offsets\n");
-            printf("Detection window width %d\n", ctx->preamble_window_width);
-                printf("Offset   Count\n");
-
-            for (i = ctx->preamble_window_low; i <= ctx->preamble_window_high; i++) {
-                printf("%3d:    %12" PRIu64 "\n", i, ctx->preamble_distro[DISTRO_OFFSET(i)]);
-            }
-            printf("\n");
-        }
-
-        if (ctx->demod_window_width) {
-            printf("Successful Message Demod Offsets\n");
-            printf("Demod window width: %d\n", ctx->demod_window_width);
-                printf("Offset   Count\n");
-
-            for (i = ctx->demod_window_low; i <= ctx->demod_window_high; i++) {
-                printf("%3d:    %12" PRIu64 "\n", i , ctx->decode_distro[DISTRO_OFFSET(i)]);
-            }
-            printf("\n");
-        }
-
-        writeJsonToFile("demod.json", generateDemodJson);
-
-    }
-
 }
 
 
@@ -261,9 +193,9 @@ bool demodHandleOption(int argc, char **argv, int *jptr)
             return false;
         }
         ctx->preamble_window_width = ctx->preamble_window_high - ctx->preamble_window_low + 1;
-        if (ctx->preamble_window_width > MAX_WINDOW_WIDTH) {
+        if (ctx->preamble_window_width > DEMOD_MAX_WINDOW_WIDTH) {
             fprintf(stderr, "Error: %s Window size %d exceeds max width of %d\n", argv[j],
-                ctx->preamble_window_high, MAX_WINDOW_WIDTH);
+                ctx->preamble_window_high, DEMOD_MAX_WINDOW_WIDTH);
             return false;
         }
         j++;
@@ -273,9 +205,9 @@ bool demodHandleOption(int argc, char **argv, int *jptr)
             return false;
         }
         ctx->demod_window_width = ctx->demod_window_high - ctx->demod_window_low + 1;
-        if (ctx->demod_window_width > MAX_WINDOW_WIDTH) {
+        if (ctx->demod_window_width > DEMOD_MAX_WINDOW_WIDTH) {
             fprintf(stderr, "Error: %s Window size %d exceeds max width of %d\n", argv[j],
-                ctx->demod_window_high - ctx->demod_window_low + 1, MAX_WINDOW_WIDTH);
+                ctx->demod_window_high - ctx->demod_window_low + 1, DEMOD_MAX_WINDOW_WIDTH);
             return false;
         }
         j++;
@@ -392,7 +324,7 @@ int32_t demodCheckPreamble(const uint16_t *sa, const uint16_t *sc, demodulator_c
     }
 
     if (Modes.stats) {
-        ctx->preamble_distro[DISTRO_OFFSET(offset)]++;
+        Modes.stats_current.demod_preamble_distro[DISTRO_OFFSET(offset)]++;
     }
 
     return 0;
