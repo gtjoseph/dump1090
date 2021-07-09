@@ -25,6 +25,7 @@ void airspyShowHelp();
 bool airspyHandleOption(int argc, char **argv, int *jptr);
 bool airspyOpen();
 void airspyRun();
+void airspyStop();
 void airspyClose();
 double airspyGetDefaultSampleRate();
 input_format_t airspyGetDefaultSampleFormat();
