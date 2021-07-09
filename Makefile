@@ -1,8 +1,9 @@
 PROGNAME=dump1090
 
 DUMP1090_VERSION ?= unknown
+DUMP1090_VARIANT ?= dump1090-fa
 
-CPPFLAGS += -I. -DMODES_DUMP1090_VERSION=\"$(DUMP1090_VERSION)\" -DMODES_DUMP1090_VARIANT=\"dump1090-fa\"
+CPPFLAGS += -I. -DMODES_DUMP1090_VERSION=\"$(DUMP1090_VERSION)\" -DMODES_DUMP1090_VARIANT=\"$(DUMP1090_VARIANT)\"
 APPEND_CFLAGS := $(CFLAGS)
 DIALECT = -std=c11
 override CFLAGS := $(DIALECT) -O3 -g -Wall -Wmissing-declarations -Werror -W -D_DEFAULT_SOURCE -fno-common
@@ -151,7 +152,7 @@ endif
 ifeq ($(AIRSPY), yes)
   SDR_OBJ += sdr_airspy.o
   CPPFLAGS += -DENABLE_AIRSPY
-  DUMP1090_CFLAGS += $(shell pkg-config --cflags libairspy)
+  CFLAGS += $(shell pkg-config --cflags libairspy)
   LIBS_SDR += $(shell pkg-config --libs libairspy)
 endif
 

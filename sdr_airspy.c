@@ -392,16 +392,6 @@ static int handle_airspy_samples(airspy_transfer *transfer)
     return 0;
 }
 
-void airspyClose()
-{
-    if (AirSpy.device) {
-        airspy_stop_rx(AirSpy.device);
-        airspy_close(AirSpy.device);
-        airspy_exit();
-        AirSpy.device = NULL;
-    }
-}
-
 void airspyRun()
 {
     if (!AirSpy.device) {
@@ -423,9 +413,31 @@ void airspyRun()
         nanosleep(&slp, NULL);
     }
 
-    airspyClose();
-    fprintf(stderr, "AirSpy stopped streaming\n");
+    if (!Modes.exit) {
+        fprintf(stderr, "aurspyRun: stopped streaming, probably lost the USB device, bailing out\n");
+    }
 }
+
+void airspyStop()
+{
+    if (!AirSpy.device) {
+        return;
+    }
+    airspy_stop_rx(AirSpy.device);
+}
+
+void airspyClose()
+{
+    struct airspy_device *device = AirSpy.device;
+    AirSpy.device = NULL;
+
+    if (!device) {
+        return;
+    }
+    airspy_close(device);
+    airspy_exit();
+}
+
 
 double airspyGetDefaultSampleRate()
 {
