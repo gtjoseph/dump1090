@@ -150,7 +150,7 @@ static sdr_handler sdr_handlers[] = {
     { "limesdr", SDR_LIMESDR, limesdrInitConfig, limesdrShowHelp, limesdrHandleOption, limesdrOpen, limesdrRun, noStop, limesdrClose, limesdrGetDefaultSampleFormat, limesdrGetDefaultSampleRate, limesdrGetDefaultDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
 #endif
 #ifdef ENABLE_AIRSPY
-    { "airspy", SDR_AIRSPY, airspyInitConfig, airspyShowHelp, airspyHandleOption, airspyOpen, airspyRun, airspyStop, airspyClose, airspyGetDefaultSampleFormat, airspyGetDefaultSampleRate, airspyGetDefaultDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },
+    { "airspy", SDR_AIRSPY, airspyInitConfig, airspyShowHelp, airspyHandleOption, airspyOpen, airspyRun, airspyStop, airspyClose, airspyGetDefaultSampleFormat, airspyGetDefaultSampleRate, airspyGetDefaultDemodulatorType, airspyGetGain, airspyGetMaxGain, airspyGetGainDb, airspySetGain },
 #endif
 
     { "none", SDR_NONE, noInitConfig, noShowHelp, noHandleOption, noOpen, noRun, noStop, noClose, noSampleFormat, noSampleRate, noDemodulatorType, noGetGain, noGetMaxGain, noGetGainDb, noSetGain },

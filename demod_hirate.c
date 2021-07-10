@@ -169,6 +169,7 @@ static void demodulateHiRateTask(struct mag_buf *mag)
     struct modesMessage mm;
     uint32_t message_count = 0;
     uint32_t j;
+    uint32_t last_message_end = 0;
 
     /* precompute average of magnitude data */
     static uint16_t *averaged = NULL;
@@ -289,10 +290,20 @@ static void demodulateHiRateTask(struct mag_buf *mag)
         /* That's it.  Use the message. */
         useModesMessage(&mm);
 
-        /* skip to next message (ish) */
-        j += msg_ctx.preamble_sample_offset + ctx->samples_per_preamble       /* preamble */
-            + msg_ctx.msg_samplelen  /* data */
-            - ctx->sample_symbol_offsets[8];         /* back up a bit, sometimes we can handle preambles that overlap the previous message */
+        // Feed "empty" sample to adaptive gain logic
+        if (j > last_message_end)
+            adaptive_update(&mag->data[last_message_end], j - last_message_end, NULL);
+
+        last_message_end = j + msg_ctx.preamble_sample_offset + ctx->samples_per_preamble
+            + msg_ctx.msg_sample_offset + msg_ctx.msg_samplelen;
+
+        adaptive_update(&mag->data[j], last_message_end - j, &mm);
+
+
+        /* skip to end of message */
+        j = last_message_end;
+        /* back up a bit, sometimes we can handle preambles that overlap the previous message */
+        j -= ctx->sample_symbol_offsets[8];
     }
 
     /* There were no messages found in the message so add the mean_power to the noise */

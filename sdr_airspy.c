@@ -438,6 +438,40 @@ void airspyClose()
     airspy_exit();
 }
 
+int airspyGetGain()
+{
+    return AirSpy.linearity_gain;
+}
+
+int airspyGetMaxGain()
+{
+    return 21;
+}
+
+double airspyGetGainDb(int step)
+{
+    if (step < 0)
+        step = 0;
+    if (step > 21)
+        step = 21;
+    return -12.0 + (2.5 * step);
+}
+
+int airspySetGain(int step)
+{
+    int status;
+
+    if (step < 0)
+        step = 0;
+    if (step > 21)
+        step = 21;
+
+    AirSpy.linearity_gain = step;
+    SET_PARAM_GAIN(linearity_gain);
+
+    return step;
+}
+
 
 double airspyGetDefaultSampleRate()
 {
