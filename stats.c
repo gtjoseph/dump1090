@@ -86,7 +86,8 @@ void display_stats(struct stats *st) {
         printf("  %12u Mode-S message preambles received\n",          st->demod_preambles);
         printf("    %12u with bad message format or invalid CRC\n",   st->demod_rejected_bad);
         printf("    %12u with unrecognized ICAO address\n",           st->demod_rejected_unknown_icao);
-        printf("    %12u duplicate messages\n",                       st->demod_rejected_dup);
+        printf("    %12u suspected duplicate messages%s\n",          st->demod_suspected_dup,
+            (Modes.current_demod && Modes.current_demod->ctx->drop_dups)? " dropped" : "");
         printf("    %12u accepted with correct CRC\n",                st->demod_accepted[0]);
         for (j = 1; j <= Modes.nfix_crc; ++j)
             printf("    %12u accepted with %d-bit error repaired\n", st->demod_accepted[j], j);
@@ -348,7 +349,7 @@ void add_stats(const struct stats *st1, const struct stats *st2, struct stats *t
     target->demod_preambles = st1->demod_preambles + st2->demod_preambles;
     target->demod_rejected_bad = st1->demod_rejected_bad + st2->demod_rejected_bad;
     target->demod_rejected_unknown_icao = st1->demod_rejected_unknown_icao + st2->demod_rejected_unknown_icao;
-    target->demod_rejected_dup = st1->demod_rejected_dup + st2->demod_rejected_dup;
+    target->demod_suspected_dup = st1->demod_suspected_dup + st2->demod_suspected_dup;
     for (i = 0; i < MODES_MAX_BITERRORS+1; ++i)
         target->demod_accepted[i]  = st1->demod_accepted[i] + st2->demod_accepted[i];
     target->demod_modeac = st1->demod_modeac + st2->demod_modeac;

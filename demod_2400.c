@@ -379,13 +379,19 @@ static void demodulate2400Task(struct mag_buf *mag)
         if (score < 0) {
             if (score == -1) {
                 Modes.stats_current.demod_rejected_unknown_icao++;
-            } else if (score == -3) {
-                Modes.stats_current.demod_rejected_dup++;
             } else {
                 Modes.stats_current.demod_rejected_bad++;
             }
             continue;
         }
+
+        if (mm.suspected_dup) {
+            Modes.stats_current.demod_suspected_dup++;
+            if (ctx->drop_dups) {
+                continue;
+            }
+        }
+
         Modes.stats_current.demod_accepted[mm.correctedbits]++;
 
         // measure signal power

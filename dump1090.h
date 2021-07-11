@@ -439,6 +439,7 @@ struct modesMessage {
     double        noiseLevel;                     // Noise, in the range [0..1], as a fraction of full-scale power
     int           score;                          // Scoring from scoreModesMessage, if used
     int           reliable;                       // is this a "reliable" message (uncorrected DF11/DF17/DF18)?
+    int           suspected_dup;                  // could this be a duplicate of the last message??
 
     datasource_t  source;                         // Characterizes the overall message source
 

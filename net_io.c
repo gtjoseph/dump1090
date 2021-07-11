@@ -1759,13 +1759,18 @@ char * appendStatsJson(char *p,
                            ",\"modeac\":%u"
                            ",\"modes\":%u"
                            ",\"bad\":%u"
-                           ",\"unknown_icao\":%u",
+                           ",\"unknown_icao\":%u"
+                           ",\"suspected_dup\":%u"
+                           ",\"duplicates_dropped\":%s",
                            (unsigned long long)st->samples_processed,
                            (unsigned long long)st->samples_dropped,
                            st->demod_modeac,
                            st->demod_preambles,
                            st->demod_rejected_bad,
-                           st->demod_rejected_unknown_icao);
+                           st->demod_rejected_unknown_icao,
+                           st->demod_suspected_dup,
+                           (Modes.current_demod && Modes.current_demod->ctx->drop_dups) ? "true" : "false"
+                           );
 
         for (i=0; i <= Modes.nfix_crc; ++i) {
             if (i == 0) p = safe_snprintf(p, end, ",\"accepted\":[%u", st->demod_accepted[i]);

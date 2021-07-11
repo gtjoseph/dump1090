@@ -243,7 +243,7 @@ static void demodulateHiRateTask(struct mag_buf *mag)
          * the frame is a 112-bit frame)
          */
 
-        uint32_t end_of_message_sample =
+        uint32_t end_of_message56_sample =
         /*
          *  Offset from start of mag buffer
          *  |   Offset to best preamble           Offset to end of preamble   Offset to best message
@@ -259,7 +259,7 @@ static void demodulateHiRateTask(struct mag_buf *mag)
          *  by 12 but if we do that, the first division will cause us to lose precision.
          *  Instead, we multiply end_of_message_sample by 12 first, then divide by samples_per_bit.
          */
-        mm.timestampMsg = mag->sampleTimestamp + (end_of_message_sample * 12 / ctx->samples_per_bit);
+        mm.timestampMsg = mag->sampleTimestamp + (end_of_message56_sample * 12 / ctx->samples_per_bit);
 
         /* compute message receive time as block-start-time + difference in the 12MHz clock */
         mm.sysTimestampMsg = mag->sysTimestamp + receiveclock_ms_elapsed(mag->sampleTimestamp, mm.timestampMsg);
@@ -270,12 +270,17 @@ static void demodulateHiRateTask(struct mag_buf *mag)
         if (score < 0) {
             if (score == -1) {
                 Modes.stats_current.demod_rejected_unknown_icao++;
-            } else if (score == -3) {
-                Modes.stats_current.demod_rejected_dup++;
+                continue;
             } else {
                 Modes.stats_current.demod_rejected_bad++;
+                continue;
             }
-            continue;
+        }
+        if (mm.suspected_dup) {
+            Modes.stats_current.demod_suspected_dup++;
+            if (ctx->drop_dups) {
+                continue;
+            }
         }
 
         message_count++;

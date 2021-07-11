@@ -59,7 +59,7 @@ struct stats {
     uint32_t demod_preambles;
     uint32_t demod_rejected_bad;
     uint32_t demod_rejected_unknown_icao;
-    uint32_t demod_rejected_dup;
+    uint32_t demod_suspected_dup;
     uint32_t demod_accepted[MODES_MAX_BITERRORS+1];
 
     // Mode A/C demodulator counts:
