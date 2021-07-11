@@ -316,10 +316,10 @@ int32_t demodCheckPreamble(const uint16_t *sa, const uint16_t *sc, demodulator_c
     return 0;
 }
 
-void processSignalAndNoise(struct modesMessage *mm, uint16_t preamble_avg_mark, uint16_t preamble_avg_space)
+void processSignalAndNoise(struct modesMessage *mm, uint16_t avg_mark, uint16_t avg_space)
 {
     /* Scale the mean level (0 -> 65535) to 0.0 -> 1.0 */
-    float signal_Vpk = (preamble_avg_mark / MAX_AMPLITUDE);
+    float signal_Vpk = (avg_mark / MAX_AMPLITUDE);
     /* mm.signalLevel is actually the power, not level */
     mm->signalLevel = (signal_Vpk * signal_Vpk);
     Modes.stats_current.signal_power_sum += mm->signalLevel;
@@ -340,7 +340,7 @@ void processSignalAndNoise(struct modesMessage *mm, uint16_t preamble_avg_mark, 
      * during conversion.
      */
     /* Scale the mean level (0 -> 65535) to 0.0 -> 1.0 */
-    float noise_Vpk = (preamble_avg_space / MAX_AMPLITUDE);
+    float noise_Vpk = (avg_space / MAX_AMPLITUDE);
     mm->noiseLevel = (noise_Vpk * noise_Vpk);
     Modes.stats_current.noise_power_sum += mm->noiseLevel;
     Modes.stats_current.noise_power_count += 1;

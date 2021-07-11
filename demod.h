@@ -146,6 +146,6 @@ extern uint32_t sample_symbol_offsets[16];
 int32_t demodCheckPreamble(const uint16_t *sa, const uint16_t *sc, demodulator_context_t *ctx,
     uint16_t *preamble_avg_mark, uint16_t *preamble_avg_space, uint32_t *preamble_best_offset );
 
-void processSignalAndNoise(struct modesMessage *mm, uint16_t preamble_avg_mark, uint16_t preamble_avg_space);
+void processSignalAndNoise(struct modesMessage *mm, uint16_t avg_mark, uint16_t avg_space);
 
 #endif

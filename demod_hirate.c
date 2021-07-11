@@ -36,7 +36,10 @@ struct message_context {
     uint32_t    preamble_sample_offset;
 
     int32_t     msg_sample_offset;
-    uint32_t    msg_samplelen;
+    uint32_t    msg_samplecount;
+    uint32_t    msg_bitcount;
+    uint32_t    msg_bytecount;
+    uint64_t    msg_mark_level_sum;
     uint8_t     msg[MODES_LONG_MSG_BYTES];
 };
 
@@ -73,6 +76,12 @@ static uint8_t readByte(const uint16_t *buf, struct message_context *msg)
                 bit = buf[n] > buf[n + ctx->samples_per_symbol];
             }
         }
+        if (bit) {
+            msg->msg_mark_level_sum += buf[n];
+        } else {
+            msg->msg_mark_level_sum += buf[n + ctx->samples_per_symbol];
+        }
+
         n += ctx->samples_per_bit;
         byte |= (bit << i);
     }
@@ -129,25 +138,25 @@ static int32_t get_message(const uint16_t *buf, struct message_context *msg)
     int32_t i;
     int32_t score = SR_NOT_SET;
     uint8_t df_byte;
-    uint32_t msg_bytelen = 0;
 
     for (i = ctx->demod_window_low; i <= ctx->demod_window_high; i++) {
         /*
          * Fast Fail.  If we don't have a valid DF, don't bother reading the rest of the message.
          */
         df_byte = readByte(buf + i, msg);
-        msg_bytelen = check_df(df_byte >> 3);
-        if (msg_bytelen == 0) {
+        msg->msg_bytecount = check_df(df_byte >> 3);
+        if (msg->msg_bytecount == 0) {
             score = SR_UNKNOWN_DF;
             continue;
         }
-
-        readBytes(buf + i, msg->msg, msg_bytelen, msg);
+        msg->msg_mark_level_sum = 0;
+        readBytes(buf + i, msg->msg, msg->msg_bytecount, msg);
 
         score = scoreModesMessage(msg->msg);
         if (score >= SR_ACCEPT_THRESHOLD) {
             msg->msg_sample_offset = i;
-            msg->msg_samplelen = msg_bytelen * ctx->samples_per_byte;
+            msg->msg_samplecount = msg->msg_bytecount * ctx->samples_per_byte;
+            msg->msg_bitcount = msg->msg_bytecount * 8;
             break;
         }
     }
@@ -290,7 +299,7 @@ static void demodulateHiRateTask(struct mag_buf *mag)
 
         Modes.stats_current.demod_accepted[mm.correctedbits]++;
 
-        processSignalAndNoise(&mm, msg_ctx.preamble_avg_mark, msg_ctx.preamble_avg_space);
+        processSignalAndNoise(&mm, msg_ctx.msg_mark_level_sum / msg_ctx.msg_bitcount, msg_ctx.preamble_avg_space);
 
         /* That's it.  Use the message. */
         useModesMessage(&mm);
@@ -300,7 +309,7 @@ static void demodulateHiRateTask(struct mag_buf *mag)
             adaptive_update(&mag->data[last_message_end], j - last_message_end, NULL);
 
         last_message_end = j + msg_ctx.preamble_sample_offset + ctx->samples_per_preamble
-            + msg_ctx.msg_sample_offset + msg_ctx.msg_samplelen;
+            + msg_ctx.msg_sample_offset + msg_ctx.msg_samplecount;
 
         adaptive_update(&mag->data[j], last_message_end - j, &mm);
 
