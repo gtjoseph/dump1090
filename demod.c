@@ -294,7 +294,7 @@ int32_t demodCheckPreamble(const uint16_t *sa, const uint16_t *sc, demodulator_c
      * -> weak correlation for a preamble starting at halfbit 1,
      *    strong correlation for a preamble starting at halfbit 8
      */
-    if ((ctx->preamble_strictness & PREAMBLE_STRICTNESS_HALFBIT)
+    if ((ctx->preamble_strictness & PREAMBLE_STRICTNESS_STRONG)
         && sc[best + ctx->samples_per_symbol * 7] > sc[best] * 2)
         return -3;
 
