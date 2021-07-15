@@ -648,6 +648,8 @@ int main(int argc, char **argv) {
 #endif
         } else if (!strcmp(argv[j],"--measure-noise")) {
             // Ignored
+        } else if (!strcmp(argv[j],"--fix-flag") && more) {
+            Modes.nfix_crc = atoi(argv[++j]);
         } else if (!strcmp(argv[j],"--fix")) {
             if (Modes.nfix_crc < 1)
                 Modes.nfix_crc = 1;
@@ -657,8 +659,16 @@ int main(int argc, char **argv) {
             Modes.enable_df24 = 1;
         } else if (!strcmp(argv[j],"--no-fix")) {
             Modes.nfix_crc = 0;
+        } else if (!strcmp(argv[j],"--fix-df-flag") && more) {
+            Modes.fix_df = atoi(argv[++j]);
+        } else if (!strcmp(argv[j],"--fix-df")) {
+            Modes.fix_df = 1;
         } else if (!strcmp(argv[j],"--no-fix-df")) {
             Modes.fix_df = 0;
+        } else if (!strcmp(argv[j],"--crc-check-flag") && more) {
+            Modes.check_crc = atoi(argv[++j]);
+        } else if (!strcmp(argv[j],"--crc-check")) {
+            Modes.check_crc = 1;
         } else if (!strcmp(argv[j],"--no-crc-check")) {
             Modes.check_crc = 0;
         } else if (!strcmp(argv[j],"--phase-enhance")) {

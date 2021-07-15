@@ -27,6 +27,7 @@ static demodulator_context_t _ctx = {
     .preamble_threshold_db = DEFAULT_PREAMBLE_THRESHOLD_DB,
     .smoother_window = -1,
     .preamble_strictness = PREAMBLE_STRICTNESS_MAX,
+    .mark_limits = 1
 };
 
 static demodulator_context_t *ctx = &_ctx;
@@ -102,7 +103,7 @@ int demodInit(void)
     fprintf(stderr, "--demod-preamble-strictness:  %d\n", ctx->preamble_strictness);
     fprintf(stderr, "    --demod-preamble-window:  %3d samples -> %3d samples  Width: %4d\n", ctx->preamble_window_low, ctx->preamble_window_high, ctx->preamble_window_width);
     fprintf(stderr, "       --demod-demod-window:  %3d samples -> %3d samples  Width: %4d\n", ctx->demod_window_low, ctx->demod_window_high, ctx->demod_window_width);
-    fprintf(stderr, "     --demod-no-mark-limits:  %s\n", ctx->no_mark_limits ? "true" : "false");
+    fprintf(stderr, "        --demod-mark-limits:  %s\n", ctx->mark_limits ? "true" : "false");
     fprintf(stderr, "      --demod-drop-dup-msgs:  %s\n", ctx->drop_dups ? "true" : "false");
     fprintf(stderr, "\n");
 
@@ -195,8 +196,16 @@ bool demodHandleOption(int argc, char **argv, int *jptr)
             return false;
         }
         j++;
+    } else if (!strcmp(argv[j], "--demod-mark-limits-flag") && more) {
+        ctx->mark_limits = atoi(argv[++j]);
     } else if (!strcmp(argv[j], "--demod-no-mark-limits")) {
-        ctx->no_mark_limits = true;
+        ctx->mark_limits = false;
+    } else if (!strcmp(argv[j], "--demod-mark-limits")) {
+        ctx->mark_limits = true;
+    } else if (!strcmp(argv[j], "--demod-drop-dup-msgs-flag") && more) {
+        ctx->drop_dups = atoi(argv[++j]);
+    } else if (!strcmp(argv[j], "--demod-no-drop-dup-msgs")) {
+        ctx->drop_dups = false;
     } else if (!strcmp(argv[j], "--demod-drop-dup-msgs")) {
         ctx->drop_dups = true;
     } else {

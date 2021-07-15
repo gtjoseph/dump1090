@@ -62,7 +62,7 @@ static uint8_t readByte(const uint16_t *buf, struct message_context *msg)
     bool bb;
 
     for (i=7 ; i >= 0 ; i--) {
-        if (ctx->no_mark_limits) {
+        if (!ctx->mark_limits) {
             bit = (buf[n] > buf[n + ctx->samples_per_symbol]);
         } else {
             ba  = ((buf[n] > msg->preamble_mark_limit_low) && (buf[n] < msg->preamble_mark_limit_high));
@@ -380,13 +380,13 @@ void demodulateHiRateHelp(void)
     printf("                                   search for a message.\n");
     printf("                                   Inclusive window must not exceed %d.\n", DEMOD_MAX_WINDOW_WIDTH);
     printf("                                   The default is %d:%d\n", DEFAULT_DEMOD_WINDOW_LOW, DEFAULT_DEMOD_WINDOW_HIGH);
-    printf("--demod-no-mark-limits             Normally a symbol in the message data will only be\n");
-    printf("                                   considered a 'mark' if it falls between the preamble\n");
+    printf("--demod-mark-limits (default)      Normally a symbol in the message data will only be\n");
+    printf("--demod-no-mark-limits             considered a 'mark' if it falls between the preamble\n");
     printf("                                   average mark * 0.707 and * 1.414. Setting this option\n");
     printf("                                   will cause a symbol to be considered a 'mark' as long as\n");
     printf("                                   it's greater than it's accompanying 'space'.\n");
     printf("--demod-drop-dup-msgs              Drops duplicate messages that arrive within 5us");
-    printf("                                   of each other.\n");
+    printf("--demod-no-drop-dup-msgs (default) of each other.\n");
     printf("\n");
 }
 

@@ -65,7 +65,7 @@ typedef struct {
     uint32_t    preamble_window_width;
     int32_t     preamble_window_low;
     int32_t     preamble_window_high;
-    bool        no_mark_limits;
+    bool        mark_limits;
     bool        drop_dups;
     preamble_strictness_t preamble_strictness;
 } demodulator_context_t;
